@@ -101,6 +101,19 @@ local Theme = {
 	ButtonHover = Color3.fromRGB(240, 240, 245),
 }
 
+-- ── Configuração do efeito "vidro" (glass) ──────────────
+-- Roblox não tem blur nativo por trás de elementos de UI (como o
+-- backdrop-filter do CSS), então simulamos o efeito "vidro fosco"
+-- combinando transparência alta com cores e bordas claras.
+-- Ajuste os valores de Alpha para controlar o quão transparente cada
+-- parte fica (0 = opaco, 1 = invisível). Entre 0.25 e 0.45 fica bom.
+local Glass = {
+	WindowAlpha  = 0.35, -- transparência do corpo da janela
+	TopBarAlpha  = 0.30, -- transparência da topbar
+	SidebarAlpha = 0.32, -- transparência da sidebar
+	CardAlpha    = 0.25, -- transparência dos cards (botões, sliders, etc)
+}
+
 function MacOSLib:CreateWindow(config)
 	config = config or {}
 	local title    = config.Title     or "MacOS UI"
@@ -141,19 +154,19 @@ function MacOSLib:CreateWindow(config)
 		Size = UDim2.new(0, width, 0, height),
 		Position = UDim2.new(0.5, -width / 2, 0.5, -height / 2),
 		BackgroundColor3 = Theme.Background,
-		BackgroundTransparency = 0.04,
+		BackgroundTransparency = Glass.WindowAlpha,
 		BorderSizePixel = 0,
 		ClipsDescendants = true,
 		Parent = gui,
 	})
 	corner(window, 12)
-	stroke(window, Theme.Divider, 1, 0.3)
+	stroke(window, Theme.Divider, 1.5, 0.15)
 
 	local topbar = create("Frame", {
 		Name = "TopBar",
 		Size = UDim2.new(1, 0, 0, 44),
 		BackgroundColor3 = Theme.TopBar,
-		BackgroundTransparency = 0.04,
+		BackgroundTransparency = Glass.TopBarAlpha,
 		BorderSizePixel = 0,
 		Parent = window,
 	})
@@ -163,7 +176,7 @@ function MacOSLib:CreateWindow(config)
 		Size = UDim2.new(1, 0, 0.5, 0),
 		Position = UDim2.new(0, 0, 0.5, 0),
 		BackgroundColor3 = Theme.TopBar,
-		BackgroundTransparency = 0.04,
+		BackgroundTransparency = Glass.TopBarAlpha,
 		BorderSizePixel = 0,
 		Parent = topbar,
 	})
@@ -256,6 +269,7 @@ function MacOSLib:CreateWindow(config)
 		Size = UDim2.new(0, 130, 1, -44),
 		Position = UDim2.new(0, 0, 0, 44),
 		BackgroundColor3 = Theme.Sidebar,
+		BackgroundTransparency = Glass.SidebarAlpha,
 		BorderSizePixel = 0,
 		Parent = window,
 	})
@@ -290,7 +304,7 @@ function MacOSLib:CreateWindow(config)
 	window.Size = UDim2.new(0, width, 0, 0)
 	window.BackgroundTransparency = 1
 	shadow.BackgroundTransparency = 1
-	tween(window, { Size = UDim2.new(0, width, 0, height), BackgroundTransparency = 0.04 }, 0.3, Enum.EasingStyle.Back)
+	tween(window, { Size = UDim2.new(0, width, 0, height), BackgroundTransparency = Glass.WindowAlpha }, 0.3, Enum.EasingStyle.Back)
 	tween(shadow, { BackgroundTransparency = 0.82 }, 0.3)
 
 	local Window = {}
@@ -470,6 +484,7 @@ function MacOSLib:CreateWindow(config)
 			local row = create("TextButton", {
 				Size = UDim2.new(1, 0, 0, 36),
 				BackgroundColor3 = Theme.ButtonBG,
+				BackgroundTransparency = Glass.CardAlpha,
 				BorderSizePixel = 0,
 				Text = "",
 				AutoButtonColor = false,
@@ -521,6 +536,7 @@ function MacOSLib:CreateWindow(config)
 			local row = create("Frame", {
 				Size = UDim2.new(1, 0, 0, 36),
 				BackgroundColor3 = Theme.ButtonBG,
+				BackgroundTransparency = Glass.CardAlpha,
 				BorderSizePixel = 0,
 				LayoutOrder = #page:GetChildren(),
 				Parent = page,
@@ -589,6 +605,7 @@ function MacOSLib:CreateWindow(config)
 			local container = create("Frame", {
 				Size = UDim2.new(1, 0, 0, 58),
 				BackgroundColor3 = Theme.ButtonBG,
+				BackgroundTransparency = Glass.CardAlpha,
 				BorderSizePixel = 0,
 				LayoutOrder = #page:GetChildren(),
 				Parent = page,
@@ -691,6 +708,7 @@ function MacOSLib:CreateWindow(config)
 			local row = create("Frame", {
 				Size = UDim2.new(1, 0, 0, 36),
 				BackgroundColor3 = Theme.ButtonBG,
+				BackgroundTransparency = Glass.CardAlpha,
 				BorderSizePixel = 0,
 				LayoutOrder = #page:GetChildren(),
 				Parent = page,
@@ -742,6 +760,7 @@ function MacOSLib:CreateWindow(config)
 			local container = create("Frame", {
 				Size = UDim2.new(1, 0, 0, 36),
 				BackgroundColor3 = Theme.ButtonBG,
+				BackgroundTransparency = Glass.CardAlpha,
 				BorderSizePixel = 0,
 				ClipsDescendants = false,
 				LayoutOrder = #page:GetChildren(),
