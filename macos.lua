@@ -305,8 +305,12 @@ function MacOSLib:CreateWindow(config)
 			tween(t._btn, {
 				BackgroundColor3 = isActive and Theme.TabActive or Theme.TabInactive,
 			}, 0.15)
-			t._btn.Label.TextColor3 = isActive and Theme.Text or Theme.SubText
-			t._btn.Label.Font = isActive and Enum.Font.GothamSemibold or Enum.Font.Gotham
+			-- FIX: usa a referência guardada em "t._label" em vez de "t._btn.Label",
+			-- já que "btn.Label = label" não é uma forma válida de acessar
+			-- instâncias filhas no Roblox (gerava o erro "Label is not a valid
+			-- member of TextButton").
+			t._label.TextColor3 = isActive and Theme.Text or Theme.SubText
+			t._label.Font = isActive and Enum.Font.GothamSemibold or Enum.Font.Gotham
 			t._page.Visible = isActive
 		end
 	end
@@ -404,7 +408,11 @@ function MacOSLib:CreateWindow(config)
 			TextXAlignment = Enum.TextXAlignment.Left,
 			Parent = btn,
 		})
-		btn.Label = label
+		-- FIX: removida a linha "btn.Label = label".
+		-- Não é necessária (o label já é filho de btn via Parent = btn)
+		-- e causava o erro reportado. A referência agora é guardada
+		-- na tabela Lua "tab" abaixo (tab._label), que aceita qualquer
+		-- chave livremente, diferente de uma Instance do Roblox.
 
 		local page = create("ScrollingFrame", {
 			Name = name .. "_Page",
@@ -423,6 +431,7 @@ function MacOSLib:CreateWindow(config)
 
 		tab._btn = btn
 		tab._page = page
+		tab._label = label -- FIX: referência guardada aqui em vez de "btn.Label"
 
 		btn.MouseButton1Click:Connect(function()
 			Window:_setActive(tab)
