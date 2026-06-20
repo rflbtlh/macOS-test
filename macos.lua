@@ -130,7 +130,7 @@ function MacOSLib:CreateWindow(config)
         BorderSizePixel = 0,
         Parent = window,
     })
-    create("UICorner", { CornerRadius = UDim.new(0, 12) }):Parent = topbar
+    do local _t = create("UICorner", { CornerRadius = UDim.new(0, 12) }); _t.Parent = topbar end
     create("Frame", {
         Size = UDim2.new(1, 0, 0.5, 0),
         Position = UDim2.new(0, 0, 0.5, 0),
