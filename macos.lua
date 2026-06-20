@@ -109,7 +109,7 @@ function MacOSLib:CreateWindow(config)
         BorderSizePixel = 0,
         Parent = gui,
     })
-    makeCorner(16):Parent = shadow
+    do local _t = makeCorner(16); _t.Parent = shadow end
     local window = create("Frame", {
         Name = "Window",
         Size = UDim2.new(0, width, 0, height),
@@ -120,8 +120,8 @@ function MacOSLib:CreateWindow(config)
         ClipsDescendants = true,
         Parent = gui,
     })
-    makeCorner(12):Parent = window
-    makeStroke(Theme.Divider, 1, 0.3):Parent = window
+    do local _t = makeCorner(12); _t.Parent = window end
+    do local _t = makeStroke(Theme.Divider, 1, 0.3); _t.Parent = window end
     local topbar = create("Frame", {
         Name = "TopBar",
         Size = UDim2.new(1, 0, 0, 44),
@@ -160,7 +160,7 @@ function MacOSLib:CreateWindow(config)
             BorderSizePixel = 0,
             Parent = topbar,
         })
-        makeCorner(50):Parent = btn
+        do local _t = makeCorner(50); _t.Parent = btn end
         trafficX = trafficX + 20
         if i == 1 then
             local closeBtn = create("TextButton", {
@@ -287,7 +287,7 @@ function MacOSLib:CreateWindow(config)
             AutoButtonColor = false,
             Parent = tabList,
         })
-        makeCorner(8):Parent = btn
+        do local _t = makeCorner(8); _t.Parent = btn end
         if icon then
             create("TextLabel", {
                 Name = "Icon",
@@ -382,8 +382,8 @@ function MacOSLib:CreateWindow(config)
                 LayoutOrder = #page:GetChildren(),
                 Parent = page,
             })
-            makeCorner(8):Parent = btn2
-            makeStroke(Theme.Divider, 1, 0.5):Parent = btn2
+            do local _t = makeCorner(8); _t.Parent = btn2 end
+            do local _t = makeStroke(Theme.Divider, 1, 0.5); _t.Parent = btn2 end
             create("TextLabel", {
                 Size = UDim2.new(1, -16, 1, 0),
                 Position = UDim2.new(0, 14, 0, 0),
@@ -429,8 +429,8 @@ function MacOSLib:CreateWindow(config)
                 LayoutOrder = #page:GetChildren(),
                 Parent = page,
             })
-            makeCorner(8):Parent = row
-            makeStroke(Theme.Divider, 1, 0.5):Parent = row
+            do local _t = makeCorner(8); _t.Parent = row end
+            do local _t = makeStroke(Theme.Divider, 1, 0.5); _t.Parent = row end
             create("TextLabel", {
                 Size = UDim2.new(1, -60, 1, 0),
                 Position = UDim2.new(0, 14, 0, 0),
@@ -449,7 +449,7 @@ function MacOSLib:CreateWindow(config)
                 BorderSizePixel = 0,
                 Parent = row,
             })
-            makeCorner(50):Parent = track
+            do local _t = makeCorner(50); _t.Parent = track end
             local thumb = create("Frame", {
                 Size = UDim2.new(0, 22, 0, 22),
                 Position = UDim2.new(0, value and 20 or 2, 0.5, -11),
@@ -457,7 +457,7 @@ function MacOSLib:CreateWindow(config)
                 BorderSizePixel = 0,
                 Parent = track,
             })
-            makeCorner(50):Parent = thumb
+            do local _t = makeCorner(50); _t.Parent = thumb end
             create("UIStroke", {
                 Color = Color3.fromRGB(0,0,0),
                 Thickness = 0.5,
@@ -496,8 +496,8 @@ function MacOSLib:CreateWindow(config)
                 LayoutOrder = #page:GetChildren(),
                 Parent = page,
             })
-            makeCorner(8):Parent = container
-            makeStroke(Theme.Divider, 1, 0.5):Parent = container
+            do local _t = makeCorner(8); _t.Parent = container end
+            do local _t = makeStroke(Theme.Divider, 1, 0.5); _t.Parent = container end
             create("TextLabel", {
                 Size = UDim2.new(1, -16, 0, 28),
                 Position = UDim2.new(0, 14, 0, 0),
@@ -527,14 +527,14 @@ function MacOSLib:CreateWindow(config)
                 BorderSizePixel = 0,
                 Parent = container,
             })
-            makeCorner(50):Parent = track
+            do local _t = makeCorner(50); _t.Parent = track end
             local fill = create("Frame", {
                 Size = UDim2.new((value - min) / (max - min), 0, 1, 0),
                 BackgroundColor3 = Theme.SliderFill,
                 BorderSizePixel = 0,
                 Parent = track,
             })
-            makeCorner(50):Parent = fill
+            do local _t = makeCorner(50); _t.Parent = fill end
             local knob = create("Frame", {
                 Size = UDim2.new(0, 14, 0, 14),
                 Position = UDim2.new((value - min) / (max - min), -7, 0.5, -7),
@@ -542,8 +542,8 @@ function MacOSLib:CreateWindow(config)
                 BorderSizePixel = 0,
                 Parent = track,
             })
-            makeCorner(50):Parent = knob
-            makeStroke(Theme.SliderFill, 2, 0):Parent = knob
+            do local _t = makeCorner(50); _t.Parent = knob end
+            do local _t = makeStroke(Theme.SliderFill, 2, 0); _t.Parent = knob end
             local dragging = false
             local function updateSlider(input)
                 local relX = math.clamp(
@@ -591,8 +591,8 @@ function MacOSLib:CreateWindow(config)
                 LayoutOrder = #page:GetChildren(),
                 Parent = page,
             })
-            makeCorner(8):Parent = row
-            makeStroke(Theme.Divider, 1, 0.5):Parent = row
+            do local _t = makeCorner(8); _t.Parent = row end
+            do local _t = makeStroke(Theme.Divider, 1, 0.5); _t.Parent = row end
             create("TextLabel", {
                 Size = UDim2.new(0.42, 0, 1, 0),
                 Position = UDim2.new(0, 14, 0, 0),
@@ -618,8 +618,8 @@ function MacOSLib:CreateWindow(config)
                 ClearTextOnFocus = false,
                 Parent = row,
             })
-            makeCorner(6):Parent = inputBox
-            makeStroke(Theme.Accent, 1, 0.6):Parent = inputBox
+            do local _t = makeCorner(6); _t.Parent = inputBox end
+            do local _t = makeStroke(Theme.Accent, 1, 0.6); _t.Parent = inputBox end
             create("UIPadding", {
                 PaddingLeft = UDim.new(0, 8),
                 PaddingRight = UDim.new(0, 8),
@@ -644,8 +644,8 @@ function MacOSLib:CreateWindow(config)
                 ZIndex = 5,
                 Parent = page,
             })
-            makeCorner(8):Parent = container
-            makeStroke(Theme.Divider, 1, 0.5):Parent = container
+            do local _t = makeCorner(8); _t.Parent = container end
+            do local _t = makeStroke(Theme.Divider, 1, 0.5); _t.Parent = container end
             create("TextLabel", {
                 Size = UDim2.new(0.48, 0, 1, 0),
                 Position = UDim2.new(0, 14, 0, 0),
@@ -671,8 +671,8 @@ function MacOSLib:CreateWindow(config)
                 ZIndex = 5,
                 Parent = container,
             })
-            makeCorner(6):Parent = selectedLabel
-            makeStroke(Theme.Divider, 1, 0.5):Parent = selectedLabel
+            do local _t = makeCorner(6); _t.Parent = selectedLabel end
+            do local _t = makeStroke(Theme.Divider, 1, 0.5); _t.Parent = selectedLabel end
             local dropList = create("Frame", {
                 Size = UDim2.new(0.46, 0, 0, #options * 30 + 8),
                 Position = UDim2.new(0.5, 0, 1, 4),
@@ -682,8 +682,8 @@ function MacOSLib:CreateWindow(config)
                 ZIndex = 10,
                 Parent = container,
             })
-            makeCorner(8):Parent = dropList
-            makeStroke(Theme.Divider, 1, 0.3):Parent = dropList
+            do local _t = makeCorner(8); _t.Parent = dropList end
+            do local _t = makeStroke(Theme.Divider, 1, 0.3); _t.Parent = dropList end
             create("UIListLayout", {
                 SortOrder = Enum.SortOrder.LayoutOrder,
                 Padding = UDim.new(0, 0),
@@ -752,8 +752,8 @@ function MacOSLib:CreateWindow(config)
             BorderSizePixel = 0,
             Parent = gui,
         })
-        makeCorner(12):Parent = notif
-        makeStroke(Theme.Divider, 1, 0.3):Parent = notif
+        do local _t = makeCorner(12); _t.Parent = notif end
+        do local _t = makeStroke(Theme.Divider, 1, 0.3); _t.Parent = notif end
         create("TextLabel", {
             Size = UDim2.new(1, -16, 0, 22),
             Position = UDim2.new(0, 14, 0, 10),
@@ -783,7 +783,7 @@ function MacOSLib:CreateWindow(config)
             BorderSizePixel = 0,
             Parent = notif,
         })
-        makeCorner(50):Parent = bar
+        do local _t = makeCorner(50); _t.Parent = bar end
         tween(notif, { Position = UDim2.new(1, -270, 1, -80) }, 0.4, Enum.EasingStyle.Back)
         tween(bar, { Size = UDim2.new(0, 0, 0, 3) }, duration, Enum.EasingStyle.Linear)
         task.delay(duration, function()
