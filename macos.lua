@@ -910,4 +910,4 @@ function MacOSLib:CreateWindow(config)
     return Window
 end
 
-return MacOSLib
+getgenv().MacOSLib = MacOSLib
