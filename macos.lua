@@ -485,6 +485,126 @@ Icons.Bell = function(parent, color)
 	line(parent, 0.44, 0.7, 0.56, 0.7, color, 0.07)
 end
 
+-- ══════════════════════════════════════════════════════════
+--   ÍCONES ESTILO FLUENT UI (Microsoft)
+--   Mesma técnica vetorial dos ícones Lucide acima (sem
+--   nenhum asset externo ou loadstring de terceiros — só
+--   Frames desenhados na hora). A diferença é só de ESTILO:
+--   a Fluent UI "regular" tende a ter formas mais geométricas
+--   e cantos mais retos que o Lucide (que é mais orgânico e
+--   com cantos bem arredondados). Use o nome com prefixo
+--   "Fluent" em CreateTab, ex: CreateTab("Principal", "FluentHome")
+-- ══════════════════════════════════════════════════════════
+
+Icons.FluentHome = function(parent, color)
+	-- telhado triangular mais reto/geométrico (estilo Fluent)
+	line(parent, 0.5, 0.08, 0.88, 0.4, color)
+	line(parent, 0.5, 0.08, 0.12, 0.4, color)
+	roundRect(parent, 0.2, 0.38, 0.6, 0.5, color, 3)
+	-- porta retangular reta (sem arredondamento, característico da Fluent)
+	line(parent, 0.42, 0.88, 0.42, 0.62, color)
+	line(parent, 0.42, 0.62, 0.58, 0.62, color)
+	line(parent, 0.58, 0.62, 0.58, 0.88, color)
+end
+
+Icons.FluentSettings = function(parent, color)
+	-- engrenagem com dentes retangulares retos (Fluent usa menos
+	-- curvas que o Lucide nos dentes da engrenagem)
+	ring(parent, 0.5, 0.5, 0.16, color)
+	local teeth = 8
+	for i = 1, teeth do
+		local angle = (i - 1) * (360 / teeth)
+		local rad = math.rad(angle)
+		local x1 = 0.5 + math.cos(rad) * 0.32
+		local y1 = 0.5 + math.sin(rad) * 0.32
+		local x2 = 0.5 + math.cos(rad) * 0.44
+		local y2 = 0.5 + math.sin(rad) * 0.44
+		line(parent, x1, y1, x2, y2, color, 0.13)
+	end
+end
+
+Icons.FluentPalette = function(parent, color)
+	-- formato mais "quadrado/geométrico" que a paleta orgânica do Lucide
+	roundRect(parent, 0.14, 0.14, 0.72, 0.72, color, 14)
+	local dots = { {0.34, 0.34, 0.07}, {0.66, 0.34, 0.07}, {0.34, 0.66, 0.07}, {0.66, 0.66, 0.07} }
+	for _, d in ipairs(dots) do
+		local dot = create("Frame", {
+			AnchorPoint = Vector2.new(0.5, 0.5),
+			BackgroundColor3 = color,
+			BorderSizePixel = 0,
+			Parent = parent,
+		})
+		corner(dot, 100)
+		local function layout()
+			local absSize = parent.AbsoluteSize
+			local base = math.min(absSize.X, absSize.Y)
+			if base <= 0 then return end
+			dot.Position = UDim2.new(d[1], 0, d[2], 0)
+			dot.Size = UDim2.new(0, d[3] * 2 * base, 0, d[3] * 2 * base)
+		end
+		layout()
+		parent:GetPropertyChangedSignal("AbsoluteSize"):Connect(layout)
+	end
+end
+
+Icons.FluentVolume = function(parent, color)
+	roundRect(parent, 0.06, 0.4, 0.22, 0.2, color, 2)
+	line(parent, 0.28, 0.4, 0.46, 0.22, color)
+	line(parent, 0.28, 0.6, 0.46, 0.78, color)
+	line(parent, 0.46, 0.22, 0.46, 0.78, color)
+	-- ondas retas e curtas, mais "técnicas" que orgânicas
+	line(parent, 0.6, 0.42, 0.68, 0.42, color, 0.07)
+	line(parent, 0.6, 0.58, 0.68, 0.58, color, 0.07)
+	line(parent, 0.76, 0.32, 0.84, 0.32, color, 0.07)
+	line(parent, 0.76, 0.68, 0.84, 0.68, color, 0.07)
+end
+
+Icons.FluentInfo = function(parent, color)
+	roundRect(parent, 0.1, 0.1, 0.8, 0.8, color, 100)
+	local dot = create("Frame", {
+		AnchorPoint = Vector2.new(0.5, 0.5),
+		BackgroundColor3 = color,
+		BorderSizePixel = 0,
+		Parent = parent,
+	})
+	corner(dot, 100)
+	local function dotLayout()
+		local absSize = parent.AbsoluteSize
+		local base = math.min(absSize.X, absSize.Y)
+		if base <= 0 then return end
+		dot.Position = UDim2.new(0.5, 0, 0.3, 0)
+		dot.Size = UDim2.new(0, 0.08 * base, 0, 0.08 * base)
+	end
+	dotLayout()
+	parent:GetPropertyChangedSignal("AbsoluteSize"):Connect(dotLayout)
+	line(parent, 0.5, 0.46, 0.5, 0.72, color, 0.1)
+end
+
+Icons.FluentBell = function(parent, color)
+	-- sino com ombros retos (sem o arco suave da versão Lucide)
+	line(parent, 0.5, 0.12, 0.5, 0.2, color)
+	line(parent, 0.5, 0.2, 0.28, 0.36, color)
+	line(parent, 0.28, 0.36, 0.22, 0.6, color)
+	line(parent, 0.5, 0.2, 0.72, 0.36, color)
+	line(parent, 0.72, 0.36, 0.78, 0.6, color)
+	line(parent, 0.2, 0.6, 0.8, 0.6, color)
+	line(parent, 0.44, 0.7, 0.56, 0.7, color, 0.07)
+end
+
+Icons.FluentShield = function(parent, color)
+	-- escudo com topo reto (mais geométrico que o do Lucide, que é mais pontudo)
+	line(parent, 0.22, 0.16, 0.78, 0.16, color)
+	line(parent, 0.22, 0.16, 0.18, 0.46, color)
+	line(parent, 0.78, 0.16, 0.82, 0.46, color)
+	line(parent, 0.18, 0.46, 0.5, 0.88, color)
+	line(parent, 0.82, 0.46, 0.5, 0.88, color)
+end
+
+Icons.FluentUser = function(parent, color)
+	ring(parent, 0.5, 0.3, 0.15, color)
+	roundRect(parent, 0.2, 0.56, 0.6, 0.32, color, 12)
+end
+
 local function drawIcon(container, name, color)
 	local fn = Icons[name]
 	if fn then
@@ -1096,8 +1216,8 @@ function MacOSLib:CreateWindow(config)
 			})
 
 			local track = create("Frame", {
-				Size = UDim2.new(0, 44, 0, 26),
-				Position = UDim2.new(1, -54, 0.5, -13),
+				Size = UDim2.new(0, 36, 0, 20),
+				Position = UDim2.new(1, -50, 0.5, -10),
 				BackgroundColor3 = value and Theme.ToggleOn or Theme.ToggleOff,
 				BorderSizePixel = 0,
 				Parent = row,
@@ -1105,8 +1225,8 @@ function MacOSLib:CreateWindow(config)
 			corner(track, 50)
 
 			local thumb = create("Frame", {
-				Size = UDim2.new(0, 22, 0, 22),
-				Position = UDim2.new(0, value and 20 or 2, 0.5, -11),
+				Size = UDim2.new(0, 16, 0, 16),
+				Position = UDim2.new(0, value and 18 or 2, 0.5, -8),
 				BackgroundColor3 = Theme.White,
 				BorderSizePixel = 0,
 				Parent = track,
@@ -1122,7 +1242,7 @@ function MacOSLib:CreateWindow(config)
 			clickArea.MouseButton1Click:Connect(function()
 				value = not value
 				tween(track, { BackgroundColor3 = value and Window._theme.ToggleOn or Window._theme.ToggleOff }, 0.2)
-				tween(thumb, { Position = UDim2.new(0, value and 20 or 2, 0.5, -11) }, 0.2)
+				tween(thumb, { Position = UDim2.new(0, value and 18 or 2, 0.5, -8) }, 0.2)
 				if callback then callback(value) end
 			end)
 
@@ -1139,7 +1259,7 @@ function MacOSLib:CreateWindow(config)
 			function toggle:Set(v)
 				value = v
 				tween(track, { BackgroundColor3 = value and Window._theme.ToggleOn or Window._theme.ToggleOff }, 0.2)
-				tween(thumb, { Position = UDim2.new(0, value and 20 or 2, 0.5, -11) }, 0.2)
+				tween(thumb, { Position = UDim2.new(0, value and 18 or 2, 0.5, -8) }, 0.2)
 			end
 			function toggle:Get() return value end
 			return toggle
