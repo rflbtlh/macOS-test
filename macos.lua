@@ -54,6 +54,35 @@ local function listlayout(parent, pad)
 	return l
 end
 
+-- ═══════════════════════════════════════════
+--   GLOW / GRADIENTE - Funções auxiliares
+-- ═══════════════════════════════════════════
+
+local function addGlow(parent, color, size, transparency)
+	local glow = create("Frame", {
+		Size = UDim2.new(1, size or 20, 1, size or 20),
+		Position = UDim2.new(0.5, -(size or 20)/2, 0.5, -(size or 20)/2),
+		BackgroundColor3 = color or Color3.fromRGB(255, 255, 255),
+		BackgroundTransparency = transparency or 0.8,
+		BorderSizePixel = 0,
+		ZIndex = 0,
+		Parent = parent,
+	})
+	corner(glow, 100)
+	return glow
+end
+
+local function addGradient(parent, color1, color2, rotation)
+	local grad = Instance.new("UIGradient")
+	grad.Color = ColorSequence.new({
+		ColorSequenceKeypoint.new(0, color1 or Color3.fromRGB(255, 255, 255)),
+		ColorSequenceKeypoint.new(1, color2 or Color3.fromRGB(200, 200, 200))
+	})
+	grad.Rotation = rotation or 45
+	grad.Parent = parent
+	return grad
+end
+
 local function makeDraggable(frame, handle)
 	handle = handle or frame
 	local dragging = false
@@ -85,12 +114,7 @@ local function makeDraggable(frame, handle)
 end
 
 -- ══════════════════════════════════════════════════════════
---   TEMAS
---   Cada tema é uma tabela completa de cores. Pra criar um
---   tema novo, basta copiar um existente e trocar as cores.
---   "Glass" controla a transparência de cada camada (igual
---   em todos os temas, mas pode ser sobrescrito por tema se
---   quiser um vidro mais ou menos opaco em algum deles).
+--   TEMAS (com cores de gradiente adicionais)
 -- ══════════════════════════════════════════════════════════
 
 local Themes = {}
@@ -117,6 +141,8 @@ Themes.Light = {
 	IconStroke       = Color3.fromRGB(70, 70, 75),
 	IconStrokeActive = Color3.fromRGB(0, 122, 255),
 	Glass = { Window = 0.35, TopBar = 0.30, Sidebar = 0.32, Card = 0.25 },
+	Gradient = { Top = Color3.fromRGB(255, 255, 255), Bottom = Color3.fromRGB(235, 235, 237) },
+	Glow = Color3.fromRGB(255, 255, 255),
 }
 
 Themes.Dark = {
@@ -141,6 +167,8 @@ Themes.Dark = {
 	IconStroke       = Color3.fromRGB(190, 190, 195),
 	IconStrokeActive = Color3.fromRGB(10, 132, 255),
 	Glass = { Window = 0.25, TopBar = 0.20, Sidebar = 0.22, Card = 0.18 },
+	Gradient = { Top = Color3.fromRGB(30, 30, 32), Bottom = Color3.fromRGB(20, 20, 22) },
+	Glow = Color3.fromRGB(30, 30, 35),
 }
 
 Themes.Nord = {
@@ -165,6 +193,8 @@ Themes.Nord = {
 	IconStroke       = Color3.fromRGB(198, 205, 217),
 	IconStrokeActive = Color3.fromRGB(136, 192, 208),
 	Glass = { Window = 0.25, TopBar = 0.20, Sidebar = 0.22, Card = 0.18 },
+	Gradient = { Top = Color3.fromRGB(50, 56, 68), Bottom = Color3.fromRGB(42, 48, 59) },
+	Glow = Color3.fromRGB(50, 56, 68),
 }
 
 Themes.Rose = {
@@ -189,39 +219,17 @@ Themes.Rose = {
 	IconStroke       = Color3.fromRGB(110, 60, 80),
 	IconStrokeActive = Color3.fromRGB(233, 79, 132),
 	Glass = { Window = 0.35, TopBar = 0.30, Sidebar = 0.32, Card = 0.25 },
+	Gradient = { Top = Color3.fromRGB(255, 255, 255), Bottom = Color3.fromRGB(250, 240, 242) },
+	Glow = Color3.fromRGB(255, 240, 242),
 }
 
 -- ══════════════════════════════════════════════════════════
---   ÍCONES ESTILO LUCIDE
---   Lucide usa traços finos (stroke, sem preenchimento),
---   pontas redondas e viewBox 24x24 com stroke-width 2.
---   Reproduzimos isso aqui com "linhas" (Frames bem finos
---   com UICorner total, ou seja, formato cápsula) — a mesma
---   técnica de ponta arredondada do Lucide, só que feita com
---   Frames em vez de SVG <path>, já que o Roblox não
---   renderiza SVG nativamente.
---
---   Cada ícone recebe um container quadrado (em Scale 0–1)
---   e uma cor, e desenha os traços dentro dele.
+--   ÍCONES MELHORADOS COM GRADIENTES E GLOW
 -- ══════════════════════════════════════════════════════════
 
 local Icons = {}
 
--- desenha uma "linha" fina com ponta redonda entre dois pontos relativos (0–1)
---
--- IMPORTANTE: no Roblox, a propriedade Rotation de um Frame SEMPRE
--- gira em torno do CENTRO do frame, mesmo que o AnchorPoint seja
--- outro (ex: a ponta esquerda). Isso é uma particularidade conhecida
--- do motor (rotação ignora AnchorPoint). Por isso usamos AnchorPoint
--- (0.5, 0.5) e calculamos o PONTO MÉDIO entre (x1,y1) e (x2,y2) como
--- posição central do frame — assim a rotação em torno do centro
--- coincide exatamente com o segmento que queremos desenhar.
---
--- O corner usa UDim.new(1, 0) (Scale = 1) em vez de um valor fixo em
--- pixels: isso garante uma "cápsula" perfeita (raio = metade da
--- espessura) em qualquer tamanho de ícone, igual ao stroke-linecap
--- "round" do Lucide — um corner fixo em offset deformava a ponta em
--- ícones pequenos.
+-- Função auxiliar para criar linha com efeito glow
 local function line(parent, x1, y1, x2, y2, color, thickness)
 	thickness = thickness or 0.07
 	local dx, dy = x2 - x1, y2 - y1
@@ -229,18 +237,29 @@ local function line(parent, x1, y1, x2, y2, color, thickness)
 	local angle = math.atan2(dy, dx)
 	local midX, midY = (x1 + x2) / 2, (y1 + y2) / 2
 
+	local container = create("Frame", {
+		Size = UDim2.new(1, 0, 1, 0),
+		BackgroundTransparency = 1,
+		Parent = parent,
+	})
+	
 	local seg = create("Frame", {
 		AnchorPoint = Vector2.new(0.5, 0.5),
 		BackgroundColor3 = color,
 		BorderSizePixel = 0,
 		Rotation = math.deg(angle),
-		Parent = parent,
+		Parent = container,
 	})
+	
+	-- Glow na linha
+	local glow = addGlow(seg, color, 4, 0.6)
+	
 	local segCorner = Instance.new("UICorner")
 	segCorner.CornerRadius = UDim.new(1, 0)
 	segCorner.Parent = seg
+	
 	local function layout()
-		local absSize = parent.AbsoluteSize
+		local absSize = container.AbsoluteSize
 		local base = math.min(absSize.X, absSize.Y)
 		if base <= 0 then return end
 		seg.Size = UDim2.new(0, length * base, 0, thickness * base)
@@ -251,11 +270,7 @@ local function line(parent, x1, y1, x2, y2, color, thickness)
 	return seg
 end
 
--- desenha um arco suave (curva) entre dois ângulos, em torno de um
--- centro relativo (cx, cy) e raio "r" — usado pra suavizar ícones
--- que no Lucide original usam curvas (Volume, Bell) em vez de só
--- segmentos retos. Internamente é feito com vários segmentos curtos
--- de "line()" interpolados, mas a olho nu aparenta uma curva contínua.
+-- Função auxiliar para arco com glow
 local function arc(parent, cx, cy, r, startAngle, endAngle, color, thickness, segments)
 	segments = segments or 8
 	local prevX, prevY = nil, nil
@@ -271,18 +286,28 @@ local function arc(parent, cx, cy, r, startAngle, endAngle, color, thickness, se
 	end
 end
 
--- desenha um círculo (apenas contorno, igual ao stroke do Lucide)
+-- Função auxiliar para anel com glow
 local function ring(parent, cx, cy, r, color, thickness)
 	thickness = thickness or 0.07
-	local c = create("Frame", {
-		AnchorPoint = Vector2.new(0.5, 0.5),
+	local container = create("Frame", {
+		Size = UDim2.new(1, 0, 1, 0),
 		BackgroundTransparency = 1,
 		Parent = parent,
 	})
+	
+	local c = create("Frame", {
+		AnchorPoint = Vector2.new(0.5, 0.5),
+		BackgroundTransparency = 1,
+		Parent = container,
+	})
 	corner(c, 100)
+	
+	-- Glow no anel
+	addGlow(c, color, 6, 0.5)
+	
 	local ringStroke = stroke(c, color, 2, 0)
 	local function layout()
-		local absSize = parent.AbsoluteSize
+		local absSize = container.AbsoluteSize
 		local base = math.min(absSize.X, absSize.Y)
 		if base <= 0 then return end
 		c.Position = UDim2.new(cx, 0, cy, 0)
@@ -290,73 +315,86 @@ local function ring(parent, cx, cy, r, color, thickness)
 		ringStroke.Thickness = math.max(1, thickness * base)
 	end
 	layout()
-	parent:GetPropertyChangedSignal("AbsoluteSize"):Connect(layout)
-	c.ZIndex = 1
+	container:GetPropertyChangedSignal("AbsoluteSize"):Connect(layout)
 	return c
 end
 
--- desenha um retângulo arredondado (apenas contorno)
+-- Função auxiliar para retângulo arredondado com glow
 local function roundRect(parent, x, y, w, h, color, radius)
+	local container = create("Frame", {
+		Size = UDim2.new(1, 0, 1, 0),
+		BackgroundTransparency = 1,
+		Parent = parent,
+	})
+	
 	local r = create("Frame", {
 		BackgroundTransparency = 1,
 		Position = UDim2.new(x, 0, y, 0),
 		Size = UDim2.new(w, 0, h, 0),
-		Parent = parent,
+		Parent = container,
 	})
 	corner(r, radius or 4)
+	
+	-- Glow no retângulo
+	addGlow(r, color, 6, 0.5)
+	
 	local rectStroke = stroke(r, color, 2, 0)
 	local function layout()
-		local absSize = parent.AbsoluteSize
+		local absSize = container.AbsoluteSize
 		local base = math.min(absSize.X, absSize.Y)
 		if base <= 0 then return end
 		rectStroke.Thickness = math.max(1, 0.07 * base)
 	end
 	layout()
-	parent:GetPropertyChangedSignal("AbsoluteSize"):Connect(layout)
+	container:GetPropertyChangedSignal("AbsoluteSize"):Connect(layout)
 	return r
 end
 
--- house (Principal)
+-- ══════════════════════════════════════════════════════════
+--   ÍCONES ESTILO LUCIDE MELHORADOS
+-- ══════════════════════════════════════════════════════════
+
+-- House (Principal) - com gradiente sutil
 Icons.House = function(parent, color)
-	line(parent, 0.5, 0.08, 0.92, 0.46, color)
-	line(parent, 0.5, 0.08, 0.08, 0.46, color)
-	line(parent, 0.16, 0.4, 0.16, 0.92, color)
-	line(parent, 0.84, 0.4, 0.84, 0.92, color)
-	line(parent, 0.16, 0.92, 0.84, 0.92, color)
-	line(parent, 0.4, 0.92, 0.4, 0.62, color)
-	line(parent, 0.4, 0.62, 0.6, 0.62, color)
-	line(parent, 0.6, 0.62, 0.6, 0.92, color)
+	-- Criar um container com gradiente
+	local container = create("Frame", {
+		Size = UDim2.new(1, 0, 1, 0),
+		BackgroundTransparency = 1,
+		Parent = parent,
+	})
+	
+	-- Gradiente suave no ícone
+	local grad = addGradient(container, color, Color3.fromRGB(
+		math.min(color.R * 1.1, 1) * 255,
+		math.min(color.G * 1.1, 1) * 255,
+		math.min(color.B * 1.1, 1) * 255
+	), 45)
+	
+	line(container, 0.5, 0.08, 0.92, 0.46, color)
+	line(container, 0.5, 0.08, 0.08, 0.46, color)
+	line(container, 0.16, 0.4, 0.16, 0.92, color)
+	line(container, 0.84, 0.4, 0.84, 0.92, color)
+	line(container, 0.16, 0.92, 0.84, 0.92, color)
+	line(container, 0.4, 0.92, 0.4, 0.62, color)
+	line(container, 0.4, 0.62, 0.6, 0.62, color)
+	line(container, 0.6, 0.62, 0.6, 0.92, color)
 end
 
--- palette (Visual)
-Icons.Palette = function(parent, color)
-	-- corpo externo da paleta (circulo grande levemente assimétrico, aproximado por anel)
-	ring(parent, 0.48, 0.5, 0.42, color)
-	-- pingos de tinta
-	local dots = { {0.34, 0.32, 0.07}, {0.56, 0.28, 0.07}, {0.7, 0.46, 0.07}, {0.36, 0.62, 0.07} }
-	for _, d in ipairs(dots) do
-		local dot = create("Frame", {
-			AnchorPoint = Vector2.new(0.5, 0.5),
-			BackgroundColor3 = color,
-			BorderSizePixel = 0,
-			Parent = parent,
-		})
-		corner(dot, 100)
-		local function layout()
-			local absSize = parent.AbsoluteSize
-			local base = math.min(absSize.X, absSize.Y)
-			if base <= 0 then return end
-			dot.Position = UDim2.new(d[1], 0, d[2], 0)
-			dot.Size = UDim2.new(0, d[3] * 2 * base, 0, d[3] * 2 * base)
-		end
-		layout()
-		parent:GetPropertyChangedSignal("AbsoluteSize"):Connect(layout)
-	end
-end
-
--- settings / gear (Config)
+-- Settings (Config) - com gradiente
 Icons.Settings = function(parent, color)
-	ring(parent, 0.5, 0.5, 0.14, color)
+	local container = create("Frame", {
+		Size = UDim2.new(1, 0, 1, 0),
+		BackgroundTransparency = 1,
+		Parent = parent,
+	})
+	
+	local grad = addGradient(container, color, Color3.fromRGB(
+		math.min(color.R * 1.2, 1) * 255,
+		math.min(color.G * 1.2, 1) * 255,
+		math.min(color.B * 1.2, 1) * 255
+	), 60)
+	
+	ring(container, 0.5, 0.5, 0.14, color)
 	local teeth = 8
 	for i = 1, teeth do
 		local angle = (i - 1) * (360 / teeth)
@@ -365,74 +403,96 @@ Icons.Settings = function(parent, color)
 		local y1 = 0.5 + math.sin(rad) * 0.3
 		local x2 = 0.5 + math.cos(rad) * 0.42
 		local y2 = 0.5 + math.sin(rad) * 0.42
-		line(parent, x1, y1, x2, y2, color, 0.1)
+		line(container, x1, y1, x2, y2, color, 0.1)
 	end
 end
 
--- sliders-horizontal (uso geral)
-Icons.Sliders = function(parent, color)
-	local rows = { 0.26, 0.5, 0.74 }
-	local knobX = { 0.66, 0.34, 0.56 }
-	for i, y in ipairs(rows) do
-		line(parent, 0.08, y, 0.92, y, color, 0.07)
-		local knob = create("Frame", {
+-- Palette (Visual) - com gradiente arco-íris
+Icons.Palette = function(parent, color)
+	local container = create("Frame", {
+		Size = UDim2.new(1, 0, 1, 0),
+		BackgroundTransparency = 1,
+		Parent = parent,
+	})
+	
+	-- Gradiente colorido para a paleta
+	local grad = Instance.new("UIGradient")
+	grad.Color = ColorSequence.new({
+		ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 50, 50)),
+		ColorSequenceKeypoint.new(0.25, Color3.fromRGB(255, 200, 50)),
+		ColorSequenceKeypoint.new(0.5, Color3.fromRGB(50, 255, 50)),
+		ColorSequenceKeypoint.new(0.75, Color3.fromRGB(50, 150, 255)),
+		ColorSequenceKeypoint.new(1, Color3.fromRGB(200, 50, 255))
+	})
+	grad.Rotation = 45
+	grad.Parent = container
+	
+	ring(container, 0.48, 0.5, 0.42, color)
+	
+	local dots = { {0.34, 0.32, 0.07}, {0.56, 0.28, 0.07}, {0.7, 0.46, 0.07}, {0.36, 0.62, 0.07} }
+	for _, d in ipairs(dots) do
+		local dot = create("Frame", {
 			AnchorPoint = Vector2.new(0.5, 0.5),
 			BackgroundColor3 = color,
 			BorderSizePixel = 0,
-			Parent = parent,
+			Parent = container,
 		})
-		corner(knob, 100)
+		corner(dot, 100)
+		addGlow(dot, color, 4, 0.5)
 		local function layout()
-			local absSize = parent.AbsoluteSize
+			local absSize = container.AbsoluteSize
 			local base = math.min(absSize.X, absSize.Y)
 			if base <= 0 then return end
-			knob.Position = UDim2.new(knobX[i], 0, y, 0)
-			knob.Size = UDim2.new(0, 0.1 * base, 0, 0.1 * base)
+			dot.Position = UDim2.new(d[1], 0, d[2], 0)
+			dot.Size = UDim2.new(0, d[3] * 2 * base, 0, d[3] * 2 * base)
 		end
 		layout()
-		parent:GetPropertyChangedSignal("AbsoluteSize"):Connect(layout)
+		container:GetPropertyChangedSignal("AbsoluteSize"):Connect(layout)
 	end
 end
 
--- volume-2 / speaker (Áudio)
+-- Volume (Áudio) - com gradiente
 Icons.Volume = function(parent, color)
-	-- corpo do alto-falante (mesma silhueta do "volume-2" do Lucide)
-	line(parent, 0.06, 0.4, 0.28, 0.4, color)
-	line(parent, 0.06, 0.4, 0.06, 0.6, color)
-	line(parent, 0.06, 0.6, 0.28, 0.6, color)
-	line(parent, 0.28, 0.4, 0.46, 0.22, color)
-	line(parent, 0.28, 0.6, 0.46, 0.78, color)
-	line(parent, 0.46, 0.22, 0.46, 0.78, color)
-	-- ondas sonoras como arcos suaves (em vez de segmentos retos),
-	-- mais fiel ao traço curvo do ícone original do Lucide
-	arc(parent, 0.42, 0.5, 0.18, -45, 45, color, 0.07, 5)
-	arc(parent, 0.42, 0.5, 0.32, -55, 55, color, 0.07, 6)
-end
-
--- info (Sobre)
-Icons.Info = function(parent, color)
-	ring(parent, 0.5, 0.5, 0.4, color)
-	local dot = create("Frame", {
-		AnchorPoint = Vector2.new(0.5, 0.5),
-		BackgroundColor3 = color,
-		BorderSizePixel = 0,
+	local container = create("Frame", {
+		Size = UDim2.new(1, 0, 1, 0),
+		BackgroundTransparency = 1,
 		Parent = parent,
 	})
-	corner(dot, 100)
-	local function dotLayout()
-		local absSize = parent.AbsoluteSize
-		local base = math.min(absSize.X, absSize.Y)
-		if base <= 0 then return end
-		dot.Position = UDim2.new(0.5, 0, 0.28, 0)
-		dot.Size = UDim2.new(0, 0.07 * base, 0, 0.07 * base)
-	end
-	dotLayout()
-	parent:GetPropertyChangedSignal("AbsoluteSize"):Connect(dotLayout)
-	line(parent, 0.5, 0.46, 0.5, 0.74, color)
+	
+	local grad = addGradient(container, color, Color3.fromRGB(
+		math.min(color.R * 0.8, 1) * 255,
+		math.min(color.G * 0.8, 1) * 255,
+		math.min(color.B * 0.8, 1) * 255
+	), -45)
+	
+	line(container, 0.06, 0.4, 0.28, 0.4, color)
+	line(container, 0.06, 0.4, 0.06, 0.6, color)
+	line(container, 0.06, 0.6, 0.28, 0.6, color)
+	line(container, 0.28, 0.4, 0.46, 0.22, color)
+	line(container, 0.28, 0.6, 0.46, 0.78, color)
+	line(container, 0.46, 0.22, 0.46, 0.78, color)
+	arc(container, 0.42, 0.5, 0.18, -45, 45, color, 0.07, 5)
+	arc(container, 0.42, 0.5, 0.32, -55, 55, color, 0.07, 6)
 end
 
--- star (uso geral / favoritos)
+-- Star (Favoritos) - com brilho especial
 Icons.Star = function(parent, color)
+	local container = create("Frame", {
+		Size = UDim2.new(1, 0, 1, 0),
+		BackgroundTransparency = 1,
+		Parent = parent,
+	})
+	
+	-- Brilho dourado
+	local goldGrad = Instance.new("UIGradient")
+	goldGrad.Color = ColorSequence.new({
+		ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 215, 0)),
+		ColorSequenceKeypoint.new(0.5, color),
+		ColorSequenceKeypoint.new(1, Color3.fromRGB(255, 215, 0))
+	})
+	goldGrad.Rotation = 90
+	goldGrad.Parent = container
+	
 	local points = {}
 	local cx, cy = 0.5, 0.52
 	local outer, inner = 0.42, 0.18
@@ -444,73 +504,49 @@ Icons.Star = function(parent, color)
 	for i = 1, #points do
 		local p1 = points[i]
 		local p2 = points[(i % #points) + 1]
-		line(parent, p1[1], p1[2], p2[1], p2[2], color, 0.07)
+		line(container, p1[1], p1[2], p2[1], p2[2], color, 0.07)
 	end
 end
 
--- shield (uso geral / segurança)
-Icons.Shield = function(parent, color)
-	line(parent, 0.5, 0.06, 0.86, 0.22, color)
-	line(parent, 0.86, 0.22, 0.86, 0.5, color)
-	line(parent, 0.86, 0.5, 0.5, 0.92, color)
-	line(parent, 0.5, 0.92, 0.14, 0.5, color)
-	line(parent, 0.14, 0.5, 0.14, 0.22, color)
-	line(parent, 0.14, 0.22, 0.5, 0.06, color)
-end
-
--- monitor (gráficos / display)
-Icons.Monitor = function(parent, color)
-	roundRect(parent, 0.08, 0.14, 0.84, 0.56, color, 6)
-	line(parent, 0.5, 0.7, 0.5, 0.86, color)
-	line(parent, 0.3, 0.86, 0.7, 0.86, color)
-end
-
--- user (perfil)
-Icons.User = function(parent, color)
-	ring(parent, 0.5, 0.32, 0.16, color)
-	line(parent, 0.18, 0.88, 0.22, 0.68, color)
-	line(parent, 0.22, 0.68, 0.78, 0.68, color)
-	line(parent, 0.78, 0.68, 0.82, 0.88, color)
-	line(parent, 0.18, 0.88, 0.82, 0.88, color)
-end
-
--- bell (notificações)
-Icons.Bell = function(parent, color)
-	-- corpo do sino com ombros curvos (igual ao "bell" do Lucide)
-	arc(parent, 0.5, 0.42, 0.28, 200, 340, color, 0.07, 6)
-	line(parent, 0.22, 0.58, 0.22, 0.42, color)
-	line(parent, 0.78, 0.58, 0.78, 0.42, color)
-	line(parent, 0.2, 0.6, 0.8, 0.6, color)
-	-- badulaque (clapper)
-	line(parent, 0.44, 0.7, 0.56, 0.7, color, 0.07)
-end
-
 -- ══════════════════════════════════════════════════════════
---   ÍCONES ESTILO FLUENT UI (Microsoft)
---   Mesma técnica vetorial dos ícones Lucide acima (sem
---   nenhum asset externo ou loadstring de terceiros — só
---   Frames desenhados na hora). A diferença é só de ESTILO:
---   a Fluent UI "regular" tende a ter formas mais geométricas
---   e cantos mais retos que o Lucide (que é mais orgânico e
---   com cantos bem arredondados). Use o nome com prefixo
---   "Fluent" em CreateTab, ex: CreateTab("Principal", "FluentHome")
+--   ÍCONES FLUENT UI MELHORADOS
 -- ══════════════════════════════════════════════════════════
 
 Icons.FluentHome = function(parent, color)
-	-- telhado triangular mais reto/geométrico (estilo Fluent)
-	line(parent, 0.5, 0.08, 0.88, 0.4, color)
-	line(parent, 0.5, 0.08, 0.12, 0.4, color)
-	roundRect(parent, 0.2, 0.38, 0.6, 0.5, color, 3)
-	-- porta retangular reta (sem arredondamento, característico da Fluent)
-	line(parent, 0.42, 0.88, 0.42, 0.62, color)
-	line(parent, 0.42, 0.62, 0.58, 0.62, color)
-	line(parent, 0.58, 0.62, 0.58, 0.88, color)
+	local container = create("Frame", {
+		Size = UDim2.new(1, 0, 1, 0),
+		BackgroundTransparency = 1,
+		Parent = parent,
+	})
+	
+	local grad = addGradient(container, color, Color3.fromRGB(
+		math.min(color.R * 1.2, 1) * 255,
+		math.min(color.G * 1.2, 1) * 255,
+		math.min(color.B * 1.2, 1) * 255
+	), 30)
+	
+	line(container, 0.5, 0.08, 0.88, 0.4, color)
+	line(container, 0.5, 0.08, 0.12, 0.4, color)
+	roundRect(container, 0.2, 0.38, 0.6, 0.5, color, 3)
+	line(container, 0.42, 0.88, 0.42, 0.62, color)
+	line(container, 0.42, 0.62, 0.58, 0.62, color)
+	line(container, 0.58, 0.62, 0.58, 0.88, color)
 end
 
 Icons.FluentSettings = function(parent, color)
-	-- engrenagem com dentes retangulares retos (Fluent usa menos
-	-- curvas que o Lucide nos dentes da engrenagem)
-	ring(parent, 0.5, 0.5, 0.16, color)
+	local container = create("Frame", {
+		Size = UDim2.new(1, 0, 1, 0),
+		BackgroundTransparency = 1,
+		Parent = parent,
+	})
+	
+	local grad = addGradient(container, color, Color3.fromRGB(
+		math.min(color.R * 0.9, 1) * 255,
+		math.min(color.G * 0.9, 1) * 255,
+		math.min(color.B * 0.9, 1) * 255
+	), -30)
+	
+	ring(container, 0.5, 0.5, 0.16, color)
 	local teeth = 8
 	for i = 1, teeth do
 		local angle = (i - 1) * (360 / teeth)
@@ -519,91 +555,13 @@ Icons.FluentSettings = function(parent, color)
 		local y1 = 0.5 + math.sin(rad) * 0.32
 		local x2 = 0.5 + math.cos(rad) * 0.44
 		local y2 = 0.5 + math.sin(rad) * 0.44
-		line(parent, x1, y1, x2, y2, color, 0.13)
+		line(container, x1, y1, x2, y2, color, 0.13)
 	end
 end
 
-Icons.FluentPalette = function(parent, color)
-	-- formato mais "quadrado/geométrico" que a paleta orgânica do Lucide
-	roundRect(parent, 0.14, 0.14, 0.72, 0.72, color, 14)
-	local dots = { {0.34, 0.34, 0.07}, {0.66, 0.34, 0.07}, {0.34, 0.66, 0.07}, {0.66, 0.66, 0.07} }
-	for _, d in ipairs(dots) do
-		local dot = create("Frame", {
-			AnchorPoint = Vector2.new(0.5, 0.5),
-			BackgroundColor3 = color,
-			BorderSizePixel = 0,
-			Parent = parent,
-		})
-		corner(dot, 100)
-		local function layout()
-			local absSize = parent.AbsoluteSize
-			local base = math.min(absSize.X, absSize.Y)
-			if base <= 0 then return end
-			dot.Position = UDim2.new(d[1], 0, d[2], 0)
-			dot.Size = UDim2.new(0, d[3] * 2 * base, 0, d[3] * 2 * base)
-		end
-		layout()
-		parent:GetPropertyChangedSignal("AbsoluteSize"):Connect(layout)
-	end
-end
-
-Icons.FluentVolume = function(parent, color)
-	roundRect(parent, 0.06, 0.4, 0.22, 0.2, color, 2)
-	line(parent, 0.28, 0.4, 0.46, 0.22, color)
-	line(parent, 0.28, 0.6, 0.46, 0.78, color)
-	line(parent, 0.46, 0.22, 0.46, 0.78, color)
-	-- ondas retas e curtas, mais "técnicas" que orgânicas
-	line(parent, 0.6, 0.42, 0.68, 0.42, color, 0.07)
-	line(parent, 0.6, 0.58, 0.68, 0.58, color, 0.07)
-	line(parent, 0.76, 0.32, 0.84, 0.32, color, 0.07)
-	line(parent, 0.76, 0.68, 0.84, 0.68, color, 0.07)
-end
-
-Icons.FluentInfo = function(parent, color)
-	roundRect(parent, 0.1, 0.1, 0.8, 0.8, color, 100)
-	local dot = create("Frame", {
-		AnchorPoint = Vector2.new(0.5, 0.5),
-		BackgroundColor3 = color,
-		BorderSizePixel = 0,
-		Parent = parent,
-	})
-	corner(dot, 100)
-	local function dotLayout()
-		local absSize = parent.AbsoluteSize
-		local base = math.min(absSize.X, absSize.Y)
-		if base <= 0 then return end
-		dot.Position = UDim2.new(0.5, 0, 0.3, 0)
-		dot.Size = UDim2.new(0, 0.08 * base, 0, 0.08 * base)
-	end
-	dotLayout()
-	parent:GetPropertyChangedSignal("AbsoluteSize"):Connect(dotLayout)
-	line(parent, 0.5, 0.46, 0.5, 0.72, color, 0.1)
-end
-
-Icons.FluentBell = function(parent, color)
-	-- sino com ombros retos (sem o arco suave da versão Lucide)
-	line(parent, 0.5, 0.12, 0.5, 0.2, color)
-	line(parent, 0.5, 0.2, 0.28, 0.36, color)
-	line(parent, 0.28, 0.36, 0.22, 0.6, color)
-	line(parent, 0.5, 0.2, 0.72, 0.36, color)
-	line(parent, 0.72, 0.36, 0.78, 0.6, color)
-	line(parent, 0.2, 0.6, 0.8, 0.6, color)
-	line(parent, 0.44, 0.7, 0.56, 0.7, color, 0.07)
-end
-
-Icons.FluentShield = function(parent, color)
-	-- escudo com topo reto (mais geométrico que o do Lucide, que é mais pontudo)
-	line(parent, 0.22, 0.16, 0.78, 0.16, color)
-	line(parent, 0.22, 0.16, 0.18, 0.46, color)
-	line(parent, 0.78, 0.16, 0.82, 0.46, color)
-	line(parent, 0.18, 0.46, 0.5, 0.88, color)
-	line(parent, 0.82, 0.46, 0.5, 0.88, color)
-end
-
-Icons.FluentUser = function(parent, color)
-	ring(parent, 0.5, 0.3, 0.15, color)
-	roundRect(parent, 0.2, 0.56, 0.6, 0.32, color, 12)
-end
+-- ══════════════════════════════════════════════════════════
+--   FUNÇÕES DA LIB
+-- ══════════════════════════════════════════════════════════
 
 local function drawIcon(container, name, color)
 	local fn = Icons[name]
@@ -618,12 +576,12 @@ MacOSLib.Icons = Icons
 function MacOSLib:CreateWindow(config)
 	config = config or {}
 	local title       = config.Title     or "MacOS UI"
-	local subtitle     = config.Subtitle  or "v1.0"
-	local width        = config.Width     or 520
-	local height       = config.Height    or 360
-	local key          = config.ToggleKey or Enum.KeyCode.RightControl
-	local themeName    = config.Theme     or "Light"
-	local Theme        = Themes[themeName] or Themes.Light
+	local subtitle    = config.Subtitle  or "v1.0"
+	local width       = config.Width     or 520
+	local height      = config.Height    or 360
+	local key         = config.ToggleKey or Enum.KeyCode.RightControl
+	local themeName   = config.Theme     or "Light"
+	local Theme       = Themes[themeName] or Themes.Light
 
 	local gui = create("ScreenGui", {
 		Name = "MacOSLib",
@@ -641,33 +599,27 @@ function MacOSLib:CreateWindow(config)
 		gui.Parent = game:GetService("Players").LocalPlayer:WaitForChild("PlayerGui")
 	end
 
+	-- Sombra com gradiente
 	local shadow = create("Frame", {
 		Name = "Shadow",
-		Size = UDim2.new(0, width + 16, 0, height + 16),
-		Position = UDim2.new(0.5, -(width / 2) - 8, 0.5, -(height / 2) - 8),
+		Size = UDim2.new(0, width + 20, 0, height + 20),
+		Position = UDim2.new(0.5, -(width / 2) - 10, 0.5, -(height / 2) - 10),
 		BackgroundColor3 = Theme.Shadow,
-		BackgroundTransparency = 0.82,
+		BackgroundTransparency = 0.85,
 		BorderSizePixel = 0,
 		ZIndex = 1,
 		Parent = gui,
 	})
 	corner(shadow, 16)
+	
+	-- Gradiente na sombra
+	addGradient(shadow, Color3.fromRGB(0, 0, 0), Color3.fromRGB(50, 50, 50), 45)
 
-	-- restoreSize guarda o tamanho/posição "normal" da janela pra
-	-- restaurar quando o usuário sair do modo maximizado.
 	local restoreSize = UDim2.new(0, width, 0, height)
 	local restorePos = UDim2.new(0.5, -width / 2, 0.5, -height / 2)
 	local isMaximized = false
 	local isMinimized = false
 
-	-- IMPORTANTE: usamos CanvasGroup em vez de Frame aqui.
-	-- ClipsDescendants normal SÓ recorta no formato retangular do
-	-- frame, mesmo com UICorner aplicado (isso é uma limitação
-	-- conhecida e documentada do Roblox: UICorner é puramente visual
-	-- e não redefine a área de clipe). CanvasGroup é o único jeito
-	-- confiável de fazer o corte respeitar o canto arredondado de
-	-- verdade — é ele que resolve o bug dos "cantos retos" no topo
-	-- e na lateral esquerda que apareciam antes.
 	local window = create("CanvasGroup", {
 		Name = "Window",
 		Size = restoreSize,
@@ -681,10 +633,13 @@ function MacOSLib:CreateWindow(config)
 	})
 	corner(window, 12)
 	stroke(window, Theme.Divider, 1.5, 0.15)
+	
+	-- Gradiente na janela
+	local windowGrad = addGradient(window, Theme.Gradient.Top, Theme.Gradient.Bottom, 45)
+	
+	-- Glow na janela
+	addGlow(window, Theme.Glow, 8, 0.7)
 
-	-- FIX: topbar não tem mais o "topbarFix" duplicado (era ele que
-	-- criava a linha visível no meio do título). Um único UICorner
-	-- com Z-index correto já resolve o arredondamento do topo.
 	local topbar = create("Frame", {
 		Name = "TopBar",
 		Size = UDim2.new(1, 0, 0, 44),
@@ -694,6 +649,9 @@ function MacOSLib:CreateWindow(config)
 		ZIndex = 2,
 		Parent = window,
 	})
+	
+	-- Gradiente na topbar
+	addGradient(topbar, Theme.Gradient.Top, Theme.Gradient.Bottom, 30)
 
 	local topbarDivider = create("Frame", {
 		Size = UDim2.new(1, 0, 0, 1),
@@ -703,17 +661,6 @@ function MacOSLib:CreateWindow(config)
 		ZIndex = 2,
 		Parent = topbar,
 	})
-
-	-- FIX: a janela inteira (window) já tem ClipsDescendants = true e
-	-- UICorner com raio 12. Antes a topbar tinha seu próprio UICorner
-	-- de raio 12 também, mas como ela é maior que o raio nas bordas
-	-- inferiores, o corner ali não fazia diferença — o bug real do
-	-- "canto reto" estava no ContentHolder (ver mais abaixo), que não
-	-- herdava nenhum corner e vazava por fora do clip da janela em
-	-- certas resoluções. Resolvido fazendo o ContentHolder ocupar
-	-- exatamente a área restante sem nenhuma sobreposição de pixel
-	-- com a borda da window, então o ClipsDescendants da própria
-	-- window cuida do arredondamento.
 
 	local trafficColors = {
 		Color3.fromRGB(255, 95, 87),
@@ -731,7 +678,8 @@ function MacOSLib:CreateWindow(config)
 			Parent = topbar,
 		})
 		corner(dot, 50)
-		trafficX = trafficX + 20
+		-- Glow nos botões de tráfego
+		addGlow(dot, trafficColors[i], 4, 0.4)
 
 		local btn = create("TextButton", {
 			Size = UDim2.new(1, 0, 1, 0),
@@ -741,7 +689,6 @@ function MacOSLib:CreateWindow(config)
 		})
 
 		if i == 1 then
-			-- fechar
 			btn.MouseButton1Click:Connect(function()
 				tween(shadow, { BackgroundTransparency = 1 }, 0.2)
 				tween(window, { BackgroundTransparency = 1, Size = UDim2.new(0, width, 0, 0) }, 0.2)
@@ -750,20 +697,17 @@ function MacOSLib:CreateWindow(config)
 				end)
 			end)
 		elseif i == 2 then
-			-- minimizar: encolhe a janela até só sobrar a topbar
 			btn.MouseButton1Click:Connect(function()
 				isMinimized = not isMinimized
 				if isMinimized then
 					tween(window, { Size = UDim2.new(window.Size.X.Scale, window.Size.X.Offset, 0, 44) }, 0.25)
-					tween(shadow, { Size = UDim2.new(0, window.Size.X.Offset + 16, 0, 60) }, 0.25)
+					tween(shadow, { Size = UDim2.new(0, window.Size.X.Offset + 20, 0, 64) }, 0.25)
 				else
-					local target = isMaximized and restoreSize or restoreSize
 					tween(window, { Size = restoreSize }, 0.25)
-					tween(shadow, { Size = UDim2.new(0, restoreSize.X.Offset + 16, 0, restoreSize.Y.Offset + 16) }, 0.25)
+					tween(shadow, { Size = UDim2.new(0, restoreSize.X.Offset + 20, 0, restoreSize.Y.Offset + 20) }, 0.25)
 				end
 			end)
 		elseif i == 3 then
-			-- maximizar: ocupa quase toda a tela, alterna de volta ao tamanho original
 			btn.MouseButton1Click:Connect(function()
 				isMaximized = not isMaximized
 				if isMaximized then
@@ -779,7 +723,7 @@ function MacOSLib:CreateWindow(config)
 				else
 					tween(window, { Size = restoreSize, Position = restorePos }, 0.25)
 					tween(shadow, {
-						Size = UDim2.new(0, restoreSize.X.Offset + 16, 0, restoreSize.Y.Offset + 16),
+						Size = UDim2.new(0, restoreSize.X.Offset + 20, 0, restoreSize.Y.Offset + 20),
 					}, 0.25)
 				end
 			end)
@@ -817,9 +761,9 @@ function MacOSLib:CreateWindow(config)
 	RunService.RenderStepped:Connect(function()
 		shadow.Position = UDim2.new(
 			window.Position.X.Scale,
-			window.Position.X.Offset - 8,
+			window.Position.X.Offset - 10,
 			window.Position.Y.Scale,
-			window.Position.Y.Offset - 8
+			window.Position.Y.Offset - 10
 		)
 	end)
 
@@ -840,6 +784,9 @@ function MacOSLib:CreateWindow(config)
 		ZIndex = 1,
 		Parent = window,
 	})
+	
+	-- Gradiente na sidebar
+	addGradient(sidebar, Theme.Gradient.Top, Theme.Gradient.Bottom, 45)
 
 	local sidebarDivider = create("Frame", {
 		Size = UDim2.new(0, 1, 1, 0),
@@ -859,10 +806,6 @@ function MacOSLib:CreateWindow(config)
 	listlayout(tabList, 2)
 	padding(tabList, 0, 8, 8, 0)
 
-	-- FIX: ContentHolder agora fica estritamente dentro da área da
-	-- window (sem encostar 1px nas bordas externas), e a window é
-	-- quem corta (ClipsDescendants) qualquer coisa que vaze. Isso
-	-- elimina o "canto reto" que aparecia no inferior direito.
 	local contentHolder = create("Frame", {
 		Name = "ContentHolder",
 		Size = UDim2.new(1, -130, 1, -44),
@@ -877,27 +820,20 @@ function MacOSLib:CreateWindow(config)
 	window.BackgroundTransparency = 1
 	shadow.BackgroundTransparency = 1
 	tween(window, { Size = restoreSize, BackgroundTransparency = Theme.Glass.Window }, 0.3, Enum.EasingStyle.Back)
-	tween(shadow, { BackgroundTransparency = 0.82 }, 0.3)
+	tween(shadow, { BackgroundTransparency = 0.85 }, 0.3)
 
 	local Window = {}
 	Window._tabs = {}
 	Window._activeTab = nil
 	Window._theme = Theme
 	Window._themeName = themeName
-	Window._openDropdownClosers = {} -- registradas por AddDropdown, chamadas ao trocar de tab/tema
+	Window._openDropdownClosers = {}
 
 	function Window:_closeAllDropdowns()
 		for _, closeFn in ipairs(Window._openDropdownClosers) do
 			closeFn()
 		end
 	end
-
-	-- ── Sistema de troca de tema em tempo real ──────────────
-	-- Cada widget criado (botão, slider, dropdown, etc.) registra
-	-- sua própria função de repaint em tab._widgets. Quando o tema
-	-- muda, percorremos todas as tabs já criadas e chamamos essas
-	-- funções, que atualizam cor/transparência sem precisar recriar
-	-- nenhuma instância.
 
 	function Window:SetTheme(newThemeName)
 		local NewTheme = Themes[newThemeName]
@@ -913,12 +849,18 @@ function MacOSLib:CreateWindow(config)
 		tween(sidebarDivider, { BackgroundColor3 = NewTheme.Divider }, 0.25)
 		tween(titleLabel, { TextColor3 = NewTheme.Text }, 0.25)
 		tween(subtitleLabel, { TextColor3 = NewTheme.SubText }, 0.25)
+		
+		-- Atualizar gradientes
+		windowGrad.Color = ColorSequence.new({
+			ColorSequenceKeypoint.new(0, NewTheme.Gradient.Top),
+			ColorSequenceKeypoint.new(1, NewTheme.Gradient.Bottom)
+		})
+		
 		local windowStroke = window:FindFirstChildOfClass("UIStroke")
 		if windowStroke then
 			tween(windowStroke, { Color = NewTheme.Divider }, 0.25)
 		end
 
-		-- repinta todas as tabs, páginas e widgets já criados
 		for _, t in pairs(Window._tabs) do
 			t:_repaint(NewTheme)
 		end
@@ -964,6 +906,9 @@ function MacOSLib:CreateWindow(config)
 		})
 		corner(notif, 12)
 		stroke(notif, T.Divider, 1, 0.3)
+		
+		-- Gradiente na notificação
+		addGradient(notif, T.Gradient.Top, T.Gradient.Bottom, 30)
 
 		local ntitleLabel = create("TextLabel", {
 			Size = UDim2.new(1, -16, 0, 22),
@@ -998,6 +943,9 @@ function MacOSLib:CreateWindow(config)
 			Parent = notif,
 		})
 		corner(bar, 50)
+		-- Glow na barra de progresso
+		addGlow(bar, T.Accent, 4, 0.5)
+		
 		tween(notif, { Position = UDim2.new(1, -270, 1, -80) }, 0.4, Enum.EasingStyle.Back)
 		tween(bar, { Size = UDim2.new(0, 0, 0, 3) }, duration, Enum.EasingStyle.Linear)
 		task.delay(duration, function()
@@ -1008,14 +956,9 @@ function MacOSLib:CreateWindow(config)
 		end)
 	end
 
-	-- ── CreateTab ──────────────────────────────────────────
-	-- "icon" é o NOME de um ícone Lucide-style registrado em
-	-- Icons (ex: "House", "Settings", "Palette", "Sliders",
-	-- "Volume", "Info", "Star", "Shield", "Monitor", "User",
-	-- "Bell"). Se omitido ou inválido, a tab não mostra ícone.
 	function Window:CreateTab(name, icon)
 		local tab = {}
-		tab._widgets = {} -- guarda widgets pra repaint de tema
+		tab._widgets = {}
 
 		local btn = create("TextButton", {
 			Name = name .. "_Tab",
@@ -1027,6 +970,8 @@ function MacOSLib:CreateWindow(config)
 			Parent = tabList,
 		})
 		corner(btn, 8)
+		-- Glow sutil na aba
+		addGlow(btn, Theme.Glow, 4, 0.8)
 
 		local hasIcon = icon ~= nil and Icons[icon] ~= nil
 		local iconHolder = nil
@@ -1076,7 +1021,6 @@ function MacOSLib:CreateWindow(config)
 		tab._iconHolder = iconHolder
 		tab._iconName = icon
 
-		-- repinta a tab e todos os widgets dela quando o tema muda
 		function tab:_repaint(NewTheme)
 			local isActive = (Window._activeTab == tab)
 			btn.BackgroundColor3 = isActive and NewTheme.TabActive or NewTheme.TabInactive
@@ -1141,6 +1085,8 @@ function MacOSLib:CreateWindow(config)
 			})
 			corner(row, 8)
 			local rowStroke = stroke(row, Theme.Divider, 1, 0.5)
+			-- Glow no botão
+			addGlow(row, Theme.Glow, 4, 0.7)
 
 			local rowLabel = create("TextLabel", {
 				Size = UDim2.new(1, -16, 1, 0),
@@ -1154,7 +1100,6 @@ function MacOSLib:CreateWindow(config)
 				Parent = row,
 			})
 
-			-- chevron vetorial (estilo Lucide chevron-right) em vez de ">"
 			local chevHolder = create("Frame", {
 				Size = UDim2.new(0, 14, 0, 14),
 				Position = UDim2.new(1, -24, 0.5, -7),
@@ -1202,6 +1147,7 @@ function MacOSLib:CreateWindow(config)
 			})
 			corner(row, 8)
 			local rowStroke = stroke(row, Theme.Divider, 1, 0.5)
+			addGlow(row, Theme.Glow, 4, 0.7)
 
 			local rowLabel = create("TextLabel", {
 				Size = UDim2.new(1, -60, 1, 0),
@@ -1223,6 +1169,7 @@ function MacOSLib:CreateWindow(config)
 				Parent = row,
 			})
 			corner(track, 50)
+			addGlow(track, value and Theme.ToggleOn or Theme.ToggleOff, 4, 0.6)
 
 			local thumb = create("Frame", {
 				Size = UDim2.new(0, 16, 0, 16),
@@ -1232,6 +1179,7 @@ function MacOSLib:CreateWindow(config)
 				Parent = track,
 			})
 			corner(thumb, 50)
+			addGlow(thumb, Theme.White, 3, 0.5)
 
 			local clickArea = create("TextButton", {
 				Size = UDim2.new(1, 0, 1, 0),
@@ -1280,6 +1228,7 @@ function MacOSLib:CreateWindow(config)
 			})
 			corner(container, 8)
 			local containerStroke = stroke(container, Theme.Divider, 1, 0.5)
+			addGlow(container, Theme.Glow, 4, 0.7)
 
 			local sliderLabel = create("TextLabel", {
 				Size = UDim2.new(1, -16, 0, 28),
@@ -1320,6 +1269,7 @@ function MacOSLib:CreateWindow(config)
 				Parent = track,
 			})
 			corner(fill, 50)
+			addGlow(fill, Theme.SliderFill, 4, 0.5)
 
 			local knob = create("Frame", {
 				Size = UDim2.new(0, 14, 0, 14),
@@ -1330,6 +1280,7 @@ function MacOSLib:CreateWindow(config)
 			})
 			corner(knob, 50)
 			local knobStroke = stroke(knob, Theme.SliderFill, 2, 0)
+			addGlow(knob, Theme.White, 4, 0.5)
 
 			local dragging = false
 			local function updateSlider(input)
@@ -1395,6 +1346,7 @@ function MacOSLib:CreateWindow(config)
 			})
 			corner(row, 8)
 			local rowStroke = stroke(row, Theme.Divider, 1, 0.5)
+			addGlow(row, Theme.Glow, 4, 0.7)
 
 			local inputLabel = create("TextLabel", {
 				Size = UDim2.new(0.42, 0, 1, 0),
@@ -1424,6 +1376,7 @@ function MacOSLib:CreateWindow(config)
 			corner(inputBox, 6)
 			local inputStroke = stroke(inputBox, Theme.Accent, 1, 0.6)
 			padding(inputBox, 0, 8, 8, 0)
+			addGlow(inputBox, Theme.Glow, 3, 0.6)
 
 			inputBox.FocusLost:Connect(function(enter)
 				if enter and callback then
@@ -1458,6 +1411,7 @@ function MacOSLib:CreateWindow(config)
 			})
 			corner(container, 8)
 			local containerStroke = stroke(container, Theme.Divider, 1, 0.5)
+			addGlow(container, Theme.Glow, 4, 0.7)
 
 			local ddLabel = create("TextLabel", {
 				Size = UDim2.new(0.48, 0, 1, 0),
@@ -1482,6 +1436,7 @@ function MacOSLib:CreateWindow(config)
 			})
 			corner(selectedLabel, 6)
 			local selectedStroke = stroke(selectedLabel, Theme.Divider, 1, 0.5)
+			addGlow(selectedLabel, Theme.Glow, 3, 0.6)
 
 			local selectedText = create("TextLabel", {
 				Size = UDim2.new(1, -24, 1, 0),
@@ -1495,7 +1450,6 @@ function MacOSLib:CreateWindow(config)
 				Parent = selectedLabel,
 			})
 
-			-- chevron-down vetorial (estilo Lucide)
 			local chevronHolder = create("Frame", {
 				Size = UDim2.new(0, 10, 0, 10),
 				Position = UDim2.new(1, -16, 0.5, -5),
@@ -1505,18 +1459,6 @@ function MacOSLib:CreateWindow(config)
 			line(chevronHolder, 0.12, 0.32, 0.5, 0.7, Theme.SubText, 0.16)
 			line(chevronHolder, 0.5, 0.7, 0.88, 0.32, Theme.SubText, 0.16)
 
-			-- ── Overlay do menu suspenso ─────────────────────────
-			-- IMPORTANTE: o painel de opções (dropList) NÃO é filho
-			-- de "container" nem de "page". Se fosse, ele ficaria
-			-- preso dentro do ScrollingFrame da aba (que corta
-			-- conteúdo fora da área visível) e, mais grave, perderia
-			-- a "queda de braço" de profundidade pra qualquer outro
-			-- card que viesse depois dele na lista (Z-index no
-			-- Roblox é hierárquico: filhos nunca furam a "camada" de
-			-- outro ramo da árvore). A solução usada por toda lib de
-			-- UI séria no Roblox é desenhar o menu num overlay
-			-- separado, direto no ScreenGui raiz, e posicioná-lo
-			-- manualmente em coordenadas absolutas de tela.
 			local overlay = create("Frame", {
 				Name = "DropdownOverlay",
 				BackgroundTransparency = 1,
@@ -1536,6 +1478,7 @@ function MacOSLib:CreateWindow(config)
 			local dropStroke = stroke(dropList, Theme.Divider, 1, 0.3)
 			listlayout(dropList, 0)
 			padding(dropList, 4, 0, 0, 4)
+			addGlow(dropList, Theme.Glow, 6, 0.8)
 
 			local optionButtons = {}
 			for _, opt in ipairs(options) do
@@ -1570,9 +1513,6 @@ function MacOSLib:CreateWindow(config)
 				end
 			end
 
-			-- recalcula a posição do overlay em coordenadas absolutas
-			-- de tela, sempre relativa à posição atual de selectedLabel
-			-- (que pode se mover se a janela for arrastada/redimensionada)
 			local function repositionOverlay()
 				local pos = selectedLabel.AbsolutePosition
 				local size = selectedLabel.AbsoluteSize
@@ -1597,20 +1537,15 @@ function MacOSLib:CreateWindow(config)
 				if open then
 					closeDropdown()
 				else
-					-- fecha qualquer outro dropdown aberto antes de abrir este
 					Window:_closeAllDropdowns()
 					open = true
 					repositionOverlay()
 					overlay.Visible = true
 					tween(chevronHolder, { Rotation = 180 }, 0.15)
-					-- mantém o overlay colado embaixo do dropdown mesmo
-					-- se a janela for arrastada enquanto está aberto
 					moveConn = RunService.RenderStepped:Connect(repositionOverlay)
 				end
 			end)
 
-			-- fecha o dropdown se o tema mudar (evita overlay com
-			-- cores velhas pendurado na tela) e se a tab perder foco
 			table.insert(tab._widgets, function(T)
 				container.BackgroundColor3 = T.ButtonBG
 				container.BackgroundTransparency = T.Glass.Card
