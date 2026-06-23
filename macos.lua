@@ -216,8 +216,14 @@ local Icons = {}
 -- (0.5, 0.5) e calculamos o PONTO MÉDIO entre (x1,y1) e (x2,y2) como
 -- posição central do frame — assim a rotação em torno do centro
 -- coincide exatamente com o segmento que queremos desenhar.
+--
+-- O corner usa UDim.new(1, 0) (Scale = 1) em vez de um valor fixo em
+-- pixels: isso garante uma "cápsula" perfeita (raio = metade da
+-- espessura) em qualquer tamanho de ícone, igual ao stroke-linecap
+-- "round" do Lucide — um corner fixo em offset deformava a ponta em
+-- ícones pequenos.
 local function line(parent, x1, y1, x2, y2, color, thickness)
-	thickness = thickness or 0.085
+	thickness = thickness or 0.07
 	local dx, dy = x2 - x1, y2 - y1
 	local length = math.sqrt(dx * dx + dy * dy)
 	local angle = math.atan2(dy, dx)
@@ -230,7 +236,9 @@ local function line(parent, x1, y1, x2, y2, color, thickness)
 		Rotation = math.deg(angle),
 		Parent = parent,
 	})
-	corner(seg, 100)
+	local segCorner = Instance.new("UICorner")
+	segCorner.CornerRadius = UDim.new(1, 0)
+	segCorner.Parent = seg
 	local function layout()
 		local absSize = parent.AbsoluteSize
 		local base = math.min(absSize.X, absSize.Y)
@@ -243,25 +251,46 @@ local function line(parent, x1, y1, x2, y2, color, thickness)
 	return seg
 end
 
+-- desenha um arco suave (curva) entre dois ângulos, em torno de um
+-- centro relativo (cx, cy) e raio "r" — usado pra suavizar ícones
+-- que no Lucide original usam curvas (Volume, Bell) em vez de só
+-- segmentos retos. Internamente é feito com vários segmentos curtos
+-- de "line()" interpolados, mas a olho nu aparenta uma curva contínua.
+local function arc(parent, cx, cy, r, startAngle, endAngle, color, thickness, segments)
+	segments = segments or 8
+	local prevX, prevY = nil, nil
+	for i = 0, segments do
+		local t = i / segments
+		local a = math.rad(startAngle + (endAngle - startAngle) * t)
+		local px = cx + math.cos(a) * r
+		local py = cy + math.sin(a) * r
+		if prevX then
+			line(parent, prevX, prevY, px, py, color, thickness)
+		end
+		prevX, prevY = px, py
+	end
+end
+
 -- desenha um círculo (apenas contorno, igual ao stroke do Lucide)
 local function ring(parent, cx, cy, r, color, thickness)
-	thickness = thickness or 0.085
+	thickness = thickness or 0.07
 	local c = create("Frame", {
 		AnchorPoint = Vector2.new(0.5, 0.5),
 		BackgroundTransparency = 1,
 		Parent = parent,
 	})
+	corner(c, 100)
+	local ringStroke = stroke(c, color, 2, 0)
 	local function layout()
 		local absSize = parent.AbsoluteSize
 		local base = math.min(absSize.X, absSize.Y)
 		if base <= 0 then return end
 		c.Position = UDim2.new(cx, 0, cy, 0)
 		c.Size = UDim2.new(0, r * 2 * base, 0, r * 2 * base)
+		ringStroke.Thickness = math.max(1, thickness * base)
 	end
 	layout()
 	parent:GetPropertyChangedSignal("AbsoluteSize"):Connect(layout)
-	corner(c, 100)
-	stroke(c, color, 2, 0)
 	c.ZIndex = 1
 	return c
 end
@@ -275,7 +304,15 @@ local function roundRect(parent, x, y, w, h, color, radius)
 		Parent = parent,
 	})
 	corner(r, radius or 4)
-	stroke(r, color, 2, 0)
+	local rectStroke = stroke(r, color, 2, 0)
+	local function layout()
+		local absSize = parent.AbsoluteSize
+		local base = math.min(absSize.X, absSize.Y)
+		if base <= 0 then return end
+		rectStroke.Thickness = math.max(1, 0.07 * base)
+	end
+	layout()
+	parent:GetPropertyChangedSignal("AbsoluteSize"):Connect(layout)
 	return r
 end
 
@@ -359,17 +396,17 @@ end
 
 -- volume-2 / speaker (Áudio)
 Icons.Volume = function(parent, color)
-	line(parent, 0.08, 0.38, 0.3, 0.38, color)
-	line(parent, 0.08, 0.38, 0.08, 0.62, color)
-	line(parent, 0.08, 0.62, 0.3, 0.62, color)
-	line(parent, 0.3, 0.38, 0.48, 0.2, color)
-	line(parent, 0.3, 0.62, 0.48, 0.8, color)
-	line(parent, 0.48, 0.2, 0.48, 0.8, color)
-	-- ondas sonoras
-	line(parent, 0.62, 0.38, 0.68, 0.32, color, 0.07)
-	line(parent, 0.62, 0.62, 0.68, 0.68, color, 0.07)
-	line(parent, 0.74, 0.3, 0.82, 0.2, color, 0.07)
-	line(parent, 0.74, 0.7, 0.82, 0.8, color, 0.07)
+	-- corpo do alto-falante (mesma silhueta do "volume-2" do Lucide)
+	line(parent, 0.06, 0.4, 0.28, 0.4, color)
+	line(parent, 0.06, 0.4, 0.06, 0.6, color)
+	line(parent, 0.06, 0.6, 0.28, 0.6, color)
+	line(parent, 0.28, 0.4, 0.46, 0.22, color)
+	line(parent, 0.28, 0.6, 0.46, 0.78, color)
+	line(parent, 0.46, 0.22, 0.46, 0.78, color)
+	-- ondas sonoras como arcos suaves (em vez de segmentos retos),
+	-- mais fiel ao traço curvo do ícone original do Lucide
+	arc(parent, 0.42, 0.5, 0.18, -45, 45, color, 0.07, 5)
+	arc(parent, 0.42, 0.5, 0.32, -55, 55, color, 0.07, 6)
 end
 
 -- info (Sobre)
@@ -439,13 +476,13 @@ end
 
 -- bell (notificações)
 Icons.Bell = function(parent, color)
-	line(parent, 0.5, 0.1, 0.3, 0.18, color)
-	line(parent, 0.3, 0.18, 0.22, 0.6, color)
-	line(parent, 0.22, 0.6, 0.78, 0.6, color)
-	line(parent, 0.78, 0.6, 0.7, 0.18, color)
-	line(parent, 0.7, 0.18, 0.5, 0.1, color)
-	line(parent, 0.18, 0.6, 0.82, 0.6, color)
-	line(parent, 0.42, 0.72, 0.58, 0.72, color, 0.07)
+	-- corpo do sino com ombros curvos (igual ao "bell" do Lucide)
+	arc(parent, 0.5, 0.42, 0.28, 200, 340, color, 0.07, 6)
+	line(parent, 0.22, 0.58, 0.22, 0.42, color)
+	line(parent, 0.78, 0.58, 0.78, 0.42, color)
+	line(parent, 0.2, 0.6, 0.8, 0.6, color)
+	-- badulaque (clapper)
+	line(parent, 0.44, 0.7, 0.56, 0.7, color, 0.07)
 end
 
 local function drawIcon(container, name, color)
@@ -727,6 +764,13 @@ function MacOSLib:CreateWindow(config)
 	Window._activeTab = nil
 	Window._theme = Theme
 	Window._themeName = themeName
+	Window._openDropdownClosers = {} -- registradas por AddDropdown, chamadas ao trocar de tab/tema
+
+	function Window:_closeAllDropdowns()
+		for _, closeFn in ipairs(Window._openDropdownClosers) do
+			closeFn()
+		end
+	end
 
 	-- ── Sistema de troca de tema em tempo real ──────────────
 	-- Cada widget criado (botão, slider, dropdown, etc.) registra
@@ -763,6 +807,7 @@ function MacOSLib:CreateWindow(config)
 	function Window:_setActive(tab)
 		if self._activeTab == tab then return end
 		self._activeTab = tab
+		self:_closeAllDropdowns()
 		for _, t in pairs(self._tabs) do
 			local isActive = (t == tab)
 			tween(t._btn, {
@@ -1288,9 +1333,7 @@ function MacOSLib:CreateWindow(config)
 				BackgroundColor3 = Theme.ButtonBG,
 				BackgroundTransparency = Theme.Glass.Card,
 				BorderSizePixel = 0,
-				ClipsDescendants = false,
 				LayoutOrder = #page:GetChildren(),
-				ZIndex = 5,
 				Parent = page,
 			})
 			corner(container, 8)
@@ -1305,7 +1348,6 @@ function MacOSLib:CreateWindow(config)
 				Font = Enum.Font.Gotham,
 				TextSize = 13,
 				TextXAlignment = Enum.TextXAlignment.Left,
-				ZIndex = 5,
 				Parent = container,
 			})
 
@@ -1316,7 +1358,6 @@ function MacOSLib:CreateWindow(config)
 				BorderSizePixel = 0,
 				Text = "",
 				AutoButtonColor = false,
-				ZIndex = 5,
 				Parent = container,
 			})
 			corner(selectedLabel, 6)
@@ -1331,7 +1372,6 @@ function MacOSLib:CreateWindow(config)
 				Font = Enum.Font.Gotham,
 				TextSize = 12,
 				TextXAlignment = Enum.TextXAlignment.Left,
-				ZIndex = 5,
 				Parent = selectedLabel,
 			})
 
@@ -1340,20 +1380,37 @@ function MacOSLib:CreateWindow(config)
 				Size = UDim2.new(0, 10, 0, 10),
 				Position = UDim2.new(1, -16, 0.5, -5),
 				BackgroundTransparency = 1,
-				ZIndex = 5,
 				Parent = selectedLabel,
 			})
 			line(chevronHolder, 0.12, 0.32, 0.5, 0.7, Theme.SubText, 0.16)
 			line(chevronHolder, 0.5, 0.7, 0.88, 0.32, Theme.SubText, 0.16)
 
-			local dropList = create("Frame", {
-				Size = UDim2.new(0.46, 0, 0, #options * 30 + 8),
-				Position = UDim2.new(0.5, 0, 1, 4),
-				BackgroundColor3 = Theme.White,
-				BorderSizePixel = 0,
+			-- ── Overlay do menu suspenso ─────────────────────────
+			-- IMPORTANTE: o painel de opções (dropList) NÃO é filho
+			-- de "container" nem de "page". Se fosse, ele ficaria
+			-- preso dentro do ScrollingFrame da aba (que corta
+			-- conteúdo fora da área visível) e, mais grave, perderia
+			-- a "queda de braço" de profundidade pra qualquer outro
+			-- card que viesse depois dele na lista (Z-index no
+			-- Roblox é hierárquico: filhos nunca furam a "camada" de
+			-- outro ramo da árvore). A solução usada por toda lib de
+			-- UI séria no Roblox é desenhar o menu num overlay
+			-- separado, direto no ScreenGui raiz, e posicioná-lo
+			-- manualmente em coordenadas absolutas de tela.
+			local overlay = create("Frame", {
+				Name = "DropdownOverlay",
+				BackgroundTransparency = 1,
+				ZIndex = 100,
 				Visible = false,
-				ZIndex = 10,
-				Parent = container,
+				Parent = gui,
+			})
+
+			local dropList = create("Frame", {
+				Size = UDim2.new(0, 0, 0, #options * 30 + 8),
+				BackgroundColor3 = Theme.ButtonBG,
+				BorderSizePixel = 0,
+				ZIndex = 100,
+				Parent = overlay,
 			})
 			corner(dropList, 8)
 			local dropStroke = stroke(dropList, Theme.Divider, 1, 0.3)
@@ -1369,7 +1426,7 @@ function MacOSLib:CreateWindow(config)
 					TextColor3 = Theme.Text,
 					Font = Enum.Font.Gotham,
 					TextSize = 12,
-					ZIndex = 10,
+					ZIndex = 100,
 					Parent = dropList,
 				})
 				table.insert(optionButtons, optBtn)
@@ -1382,18 +1439,58 @@ function MacOSLib:CreateWindow(config)
 				optBtn.MouseButton1Click:Connect(function()
 					selected = opt
 					selectedText.Text = opt
-					dropList.Visible = false
+					overlay.Visible = false
 					open = false
-					if callback then callback(opt) end
+					tween(chevronHolder, { Rotation = 0 }, 0.15)
 				end)
+				if callback then
+					optBtn.MouseButton1Click:Connect(function()
+						callback(opt)
+					end)
+				end
 			end
 
+			-- recalcula a posição do overlay em coordenadas absolutas
+			-- de tela, sempre relativa à posição atual de selectedLabel
+			-- (que pode se mover se a janela for arrastada/redimensionada)
+			local function repositionOverlay()
+				local pos = selectedLabel.AbsolutePosition
+				local size = selectedLabel.AbsoluteSize
+				overlay.Position = UDim2.new(0, pos.X, 0, pos.Y + size.Y + 4)
+				dropList.Size = UDim2.new(0, size.X, 0, #options * 30 + 8)
+			end
+
+			local moveConn = nil
+			local function closeDropdown()
+				if not open then return end
+				open = false
+				overlay.Visible = false
+				tween(chevronHolder, { Rotation = 0 }, 0.15)
+				if moveConn then
+					moveConn:Disconnect()
+					moveConn = nil
+				end
+			end
+			table.insert(Window._openDropdownClosers, closeDropdown)
+
 			selectedLabel.MouseButton1Click:Connect(function()
-				open = not open
-				dropList.Visible = open
-				tween(chevronHolder, { Rotation = open and 180 or 0 }, 0.15)
+				if open then
+					closeDropdown()
+				else
+					-- fecha qualquer outro dropdown aberto antes de abrir este
+					Window:_closeAllDropdowns()
+					open = true
+					repositionOverlay()
+					overlay.Visible = true
+					tween(chevronHolder, { Rotation = 180 }, 0.15)
+					-- mantém o overlay colado embaixo do dropdown mesmo
+					-- se a janela for arrastada enquanto está aberto
+					moveConn = RunService.RenderStepped:Connect(repositionOverlay)
+				end
 			end)
 
+			-- fecha o dropdown se o tema mudar (evita overlay com
+			-- cores velhas pendurado na tela) e se a tab perder foco
 			table.insert(tab._widgets, function(T)
 				container.BackgroundColor3 = T.ButtonBG
 				container.BackgroundTransparency = T.Glass.Card
@@ -1402,7 +1499,7 @@ function MacOSLib:CreateWindow(config)
 				selectedLabel.BackgroundColor3 = T.InputBG
 				selectedStroke.Color = T.Divider
 				selectedText.TextColor3 = T.Text
-				dropList.BackgroundColor3 = T.White
+				dropList.BackgroundColor3 = T.ButtonBG
 				dropStroke.Color = T.Divider
 				for _, c in ipairs(chevronHolder:GetChildren()) do
 					c.BackgroundColor3 = T.SubText
@@ -1410,6 +1507,7 @@ function MacOSLib:CreateWindow(config)
 				for _, optBtn in ipairs(optionButtons) do
 					optBtn.TextColor3 = T.Text
 				end
+				closeDropdown()
 			end)
 
 			local dd = {}
