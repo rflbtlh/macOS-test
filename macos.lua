@@ -99,6 +99,8 @@ local Theme = {
 	White       = Color3.fromRGB(255, 255, 255),
 	ButtonBG    = Color3.fromRGB(255, 255, 255),
 	ButtonHover = Color3.fromRGB(240, 240, 245),
+	IconStroke  = Color3.fromRGB(60, 60, 64),
+	IconStrokeActive = Color3.fromRGB(0, 122, 255),
 }
 
 -- ── Configuração do efeito "vidro" (glass) ──────────────
@@ -113,6 +115,284 @@ local Glass = {
 	SidebarAlpha = 0.32, -- transparência da sidebar
 	CardAlpha    = 0.25, -- transparência dos cards (botões, sliders, etc)
 }
+
+-- ══════════════════════════════════════════════════════════
+--   ÍCONES VETORIAIS
+--   Em vez de emojis (que variam de fonte pra fonte e não
+--   seguem o tema), os ícones aqui são desenhados na hora com
+--   Frames + UICorner formando traços geométricos simples.
+--   Isso garante visual consistente, nítido em qualquer
+--   resolução e sem depender de nenhum asset externo.
+--
+--   Cada função de ícone recebe um "parent" (geralmente um
+--   Frame quadrado de tamanho fixo) e desenha dentro dele,
+--   usando Scale (0 a 1) para todas as posições/tamanhos —
+--   assim o ícone escala automaticamente com o container.
+-- ══════════════════════════════════════════════════════════
+
+local Icons = {}
+
+-- pequeno helper pra criar um "traço" (linha) dentro do ícone
+local function iconLine(parent, x, y, w, h, color, rounded)
+	local line = create("Frame", {
+		BackgroundColor3 = color,
+		BorderSizePixel = 0,
+		Position = UDim2.new(x, 0, y, 0),
+		Size = UDim2.new(w, 0, h, 0),
+		Parent = parent,
+	})
+	if rounded then
+		corner(line, 100)
+	end
+	return line
+end
+
+-- Casa (Home) — usada em tabs gerais / página inicial
+Icons.Home = function(parent, color)
+	color = color or Theme.IconStroke
+	-- telhado (triângulo feito com um quadrado rotacionado)
+	local roof = create("Frame", {
+		BackgroundColor3 = color,
+		BorderSizePixel = 0,
+		AnchorPoint = Vector2.new(0.5, 0.5),
+		Position = UDim2.new(0.5, 0, 0.32, 0),
+		Size = UDim2.new(0.62, 0, 0.62, 0),
+		Rotation = 45,
+		Parent = parent,
+	})
+	corner(roof, 3)
+	-- corpo da casa
+	iconLine(parent, 0.22, 0.46, 0.56, 0.4, color, false)
+	-- porta (recorte usando a cor de fundo do card por cima)
+	local door = create("Frame", {
+		BackgroundColor3 = Theme.ButtonBG,
+		BackgroundTransparency = Glass.CardAlpha,
+		BorderSizePixel = 0,
+		Position = UDim2.new(0.42, 0, 0.62, 0),
+		Size = UDim2.new(0.16, 0, 0.24, 0),
+		ZIndex = 2,
+		Parent = parent,
+	})
+	door.ZIndex = (parent:FindFirstChild("UIListLayout") and 1) or 2
+end
+
+-- Paleta de cores — usada em tabs de visual/aparência
+Icons.Palette = function(parent, color)
+	color = color or Theme.IconStroke
+	local base = create("Frame", {
+		BackgroundColor3 = color,
+		BorderSizePixel = 0,
+		AnchorPoint = Vector2.new(0.5, 0.5),
+		Position = UDim2.new(0.46, 0, 0.5, 0),
+		Size = UDim2.new(0.74, 0, 0.6, 0),
+		Parent = parent,
+	})
+	corner(base, 100)
+	-- "furo" do polegar
+	local thumbHole = create("Frame", {
+		BackgroundColor3 = Theme.ButtonBG,
+		BackgroundTransparency = Glass.CardAlpha,
+		BorderSizePixel = 0,
+		AnchorPoint = Vector2.new(0.5, 0.5),
+		Position = UDim2.new(0.78, 0, 0.62, 0),
+		Size = UDim2.new(0.26, 0, 0.26, 0),
+		Parent = base,
+	})
+	corner(thumbHole, 100)
+	-- pingos de tinta
+	local dotPositions = {
+		{0.28, 0.32}, {0.5, 0.24}, {0.7, 0.34},
+	}
+	for _, p in ipairs(dotPositions) do
+		local dot = create("Frame", {
+			BackgroundColor3 = Theme.Accent,
+			BorderSizePixel = 0,
+			AnchorPoint = Vector2.new(0.5, 0.5),
+			Position = UDim2.new(p[1], 0, p[2], 0),
+			Size = UDim2.new(0.14, 0, 0.14, 0),
+			Parent = base,
+		})
+		corner(dot, 100)
+	end
+end
+
+-- Engrenagem — usada em tabs de configurações
+Icons.Gear = function(parent, color)
+	color = color or Theme.IconStroke
+	local center = create("Frame", {
+		BackgroundColor3 = color,
+		BorderSizePixel = 0,
+		AnchorPoint = Vector2.new(0.5, 0.5),
+		Position = UDim2.new(0.5, 0, 0.5, 0),
+		Size = UDim2.new(0.42, 0, 0.42, 0),
+		Parent = parent,
+	})
+	corner(center, 100)
+	local hole = create("Frame", {
+		BackgroundColor3 = Theme.ButtonBG,
+		BackgroundTransparency = Glass.CardAlpha,
+		BorderSizePixel = 0,
+		AnchorPoint = Vector2.new(0.5, 0.5),
+		Position = UDim2.new(0.5, 0, 0.5, 0),
+		Size = UDim2.new(0.16, 0, 0.16, 0),
+		Parent = center,
+	})
+	corner(hole, 100)
+	-- "dentes" da engrenagem em 4 direções
+	local toothPositions = {
+		{0.5, 0.06, 0.18, 0.22},
+		{0.5, 0.94, 0.18, 0.22},
+		{0.06, 0.5, 0.22, 0.18},
+		{0.94, 0.5, 0.22, 0.18},
+	}
+	for _, t in ipairs(toothPositions) do
+		local tooth = create("Frame", {
+			BackgroundColor3 = color,
+			BorderSizePixel = 0,
+			AnchorPoint = Vector2.new(0.5, 0.5),
+			Position = UDim2.new(t[1], 0, t[2], 0),
+			Size = UDim2.new(t[3], 0, t[4], 0),
+			Parent = parent,
+		})
+		corner(tooth, 2)
+	end
+end
+
+-- Controle deslizante / Display — usada em tabs de câmera/gráficos
+Icons.Sliders = function(parent, color)
+	color = color or Theme.IconStroke
+	local rows = {0.22, 0.5, 0.78}
+	for i, y in ipairs(rows) do
+		iconLine(parent, 0.12, y - 0.04, 0.76, 0.08, Theme.Divider, true)
+		local knobX = (i == 1 and 0.66) or (i == 2 and 0.32) or 0.52
+		local knob = create("Frame", {
+			BackgroundColor3 = color,
+			BorderSizePixel = 0,
+			AnchorPoint = Vector2.new(0.5, 0.5),
+			Position = UDim2.new(knobX, 0, y, 0),
+			Size = UDim2.new(0.16, 0, 0.16, 0),
+			Parent = parent,
+		})
+		corner(knob, 100)
+	end
+end
+
+-- Alto-falante — usada em tabs de áudio
+Icons.Speaker = function(parent, color)
+	color = color or Theme.IconStroke
+	local body = create("Frame", {
+		BackgroundColor3 = color,
+		BorderSizePixel = 0,
+		AnchorPoint = Vector2.new(0.5, 0.5),
+		Position = UDim2.new(0.32, 0, 0.5, 0),
+		Size = UDim2.new(0.22, 0, 0.42, 0),
+		Parent = parent,
+	})
+	corner(body, 3)
+	local cone = create("Frame", {
+		BackgroundColor3 = color,
+		BorderSizePixel = 0,
+		AnchorPoint = Vector2.new(0.5, 0.5),
+		Position = UDim2.new(0.46, 0, 0.5, 0),
+		Size = UDim2.new(0.2, 0, 0.7, 0),
+		Rotation = 0,
+		Parent = parent,
+	})
+	corner(cone, 100)
+	-- ondas sonoras (dois arcos simples feitos com strokes em frames vazados)
+	for i, r in ipairs({0.16, 0.28}) do
+		local wave = create("Frame", {
+			BackgroundTransparency = 1,
+			AnchorPoint = Vector2.new(0, 0.5),
+			Position = UDim2.new(0.6 + (i * 0.1), 0, 0.5, 0),
+			Size = UDim2.new(r, 0, r * 2.2, 0),
+			Parent = parent,
+		})
+		corner(wave, 100)
+		stroke(wave, color, 2, 0)
+	end
+end
+
+-- Informação (i circular) — usada em tabs de info/sobre
+Icons.Info = function(parent, color)
+	color = color or Theme.IconStroke
+	local circle = create("Frame", {
+		BackgroundTransparency = 1,
+		AnchorPoint = Vector2.new(0.5, 0.5),
+		Position = UDim2.new(0.5, 0, 0.5, 0),
+		Size = UDim2.new(0.82, 0, 0.82, 0),
+		Parent = parent,
+	})
+	corner(circle, 100)
+	stroke(circle, color, 2, 0)
+	local dot = create("Frame", {
+		BackgroundColor3 = color,
+		BorderSizePixel = 0,
+		AnchorPoint = Vector2.new(0.5, 0.5),
+		Position = UDim2.new(0.5, 0, 0.28, 0),
+		Size = UDim2.new(0.12, 0, 0.12, 0),
+		Parent = parent,
+	})
+	corner(dot, 100)
+	iconLine(parent, 0.44, 0.46, 0.12, 0.32, color, true)
+end
+
+-- Estrela — uso geral / favoritos / destaque
+Icons.Star = function(parent, color)
+	color = color or Theme.IconStroke
+	-- aproximação simples de estrela com dois quadrados rotacionados (efeito "diamante duplo")
+	local a = create("Frame", {
+		BackgroundColor3 = color,
+		BorderSizePixel = 0,
+		AnchorPoint = Vector2.new(0.5, 0.5),
+		Position = UDim2.new(0.5, 0, 0.5, 0),
+		Size = UDim2.new(0.62, 0, 0.62, 0),
+		Rotation = 0,
+		Parent = parent,
+	})
+	corner(a, 4)
+	local b = create("Frame", {
+		BackgroundColor3 = color,
+		BorderSizePixel = 0,
+		AnchorPoint = Vector2.new(0.5, 0.5),
+		Position = UDim2.new(0.5, 0, 0.5, 0),
+		Size = UDim2.new(0.62, 0, 0.62, 0),
+		Rotation = 45,
+		Parent = parent,
+	})
+	corner(b, 4)
+end
+
+-- Escudo — uso geral / segurança / proteção
+Icons.Shield = function(parent, color)
+	color = color or Theme.IconStroke
+	local top = create("Frame", {
+		BackgroundColor3 = color,
+		BorderSizePixel = 0,
+		AnchorPoint = Vector2.new(0.5, 0.5),
+		Position = UDim2.new(0.5, 0, 0.4, 0),
+		Size = UDim2.new(0.6, 0, 0.5, 0),
+		Parent = parent,
+	})
+	corner(top, 100)
+	local bottom = create("Frame", {
+		BackgroundColor3 = color,
+		BorderSizePixel = 0,
+		AnchorPoint = Vector2.new(0.5, 0.5),
+		Position = UDim2.new(0.5, 0, 0.62, 0),
+		Size = UDim2.new(0.6, 0, 0.42, 0),
+		Rotation = 45,
+		Parent = parent,
+	})
+end
+
+-- Função genérica pra desenhar um ícone por nome dentro de um container
+local function drawIcon(container, name, color)
+	local fn = Icons[name]
+	if fn then
+		fn(container, color)
+	end
+end
 
 function MacOSLib:CreateWindow(config)
 	config = config or {}
@@ -319,12 +599,19 @@ function MacOSLib:CreateWindow(config)
 			tween(t._btn, {
 				BackgroundColor3 = isActive and Theme.TabActive or Theme.TabInactive,
 			}, 0.15)
-			-- FIX: usa a referência guardada em "t._label" em vez de "t._btn.Label",
-			-- já que "btn.Label = label" não é uma forma válida de acessar
-			-- instâncias filhas no Roblox (gerava o erro "Label is not a valid
-			-- member of TextButton").
 			t._label.TextColor3 = isActive and Theme.Text or Theme.SubText
 			t._label.Font = isActive and Enum.Font.GothamSemibold or Enum.Font.Gotham
+			-- atualiza a cor dos traços do ícone vetorial pra refletir o estado ativo
+			if t._iconHolder then
+				for _, child in ipairs(t._iconHolder:GetDescendants()) do
+					if child:IsA("Frame") and child.BackgroundColor3 == Theme.IconStroke then
+						child.BackgroundColor3 = isActive and Theme.IconStrokeActive or Theme.IconStroke
+					end
+					if child:IsA("UIStroke") and child.Color == Theme.IconStroke then
+						child.Color = isActive and Theme.IconStrokeActive or Theme.IconStroke
+					end
+				end
+			end
 			t._page.Visible = isActive
 		end
 	end
@@ -381,6 +668,11 @@ function MacOSLib:CreateWindow(config)
 		end)
 	end
 
+	-- ── CreateTab ──────────────────────────────────────────
+	-- "icon" agora é opcional e espera o NOME de um ícone vetorial
+	-- registrado em Icons (ex: "Home", "Gear", "Palette", "Sliders",
+	-- "Speaker", "Info", "Star", "Shield"). Se omitido ou inválido,
+	-- a tab simplesmente não mostra ícone.
 	function Window:CreateTab(name, icon)
 		local tab = {}
 
@@ -395,21 +687,20 @@ function MacOSLib:CreateWindow(config)
 		})
 		corner(btn, 8)
 
-		if icon then
-			local iconLabel = create("TextLabel", {
+		local hasIcon = icon ~= nil and Icons[icon] ~= nil
+		local iconHolder = nil
+		if hasIcon then
+			iconHolder = create("Frame", {
 				Name = "Icon",
-				Size = UDim2.new(0, 24, 1, 0),
-				Position = UDim2.new(0, 8, 0, 0),
+				Size = UDim2.new(0, 18, 0, 18),
+				Position = UDim2.new(0, 9, 0.5, -9),
 				BackgroundTransparency = 1,
-				Text = icon,
-				TextSize = 16,
-				Font = Enum.Font.Gotham,
-				TextColor3 = Theme.SubText,
 				Parent = btn,
 			})
+			drawIcon(iconHolder, icon, Theme.IconStroke)
 		end
 
-		local labelOffset = icon and 32 or 10
+		local labelOffset = hasIcon and 34 or 10
 		local label = create("TextLabel", {
 			Name = "Label",
 			Size = UDim2.new(1, -labelOffset - 4, 1, 0),
@@ -422,11 +713,6 @@ function MacOSLib:CreateWindow(config)
 			TextXAlignment = Enum.TextXAlignment.Left,
 			Parent = btn,
 		})
-		-- FIX: removida a linha "btn.Label = label".
-		-- Não é necessária (o label já é filho de btn via Parent = btn)
-		-- e causava o erro reportado. A referência agora é guardada
-		-- na tabela Lua "tab" abaixo (tab._label), que aceita qualquer
-		-- chave livremente, diferente de uma Instance do Roblox.
 
 		local page = create("ScrollingFrame", {
 			Name = name .. "_Page",
@@ -445,7 +731,8 @@ function MacOSLib:CreateWindow(config)
 
 		tab._btn = btn
 		tab._page = page
-		tab._label = label -- FIX: referência guardada aqui em vez de "btn.Label"
+		tab._label = label
+		tab._iconHolder = iconHolder
 
 		btn.MouseButton1Click:Connect(function()
 			Window:_setActive(tab)
@@ -782,21 +1069,63 @@ function MacOSLib:CreateWindow(config)
 				ZIndex = 5,
 				Parent = container,
 			})
+
 			local selectedLabel = create("TextButton", {
 				Size = UDim2.new(0.46, 0, 0, 24),
 				Position = UDim2.new(0.5, 0, 0.5, -12),
 				BackgroundColor3 = Theme.InputBG,
 				BorderSizePixel = 0,
-				Text = selected .. "  v",
-				TextColor3 = Theme.Text,
-				Font = Enum.Font.Gotham,
-				TextSize = 12,
+				Text = "",
 				AutoButtonColor = false,
 				ZIndex = 5,
 				Parent = container,
 			})
 			corner(selectedLabel, 6)
 			stroke(selectedLabel, Theme.Divider, 1, 0.5)
+
+			local selectedText = create("TextLabel", {
+				Size = UDim2.new(1, -24, 1, 0),
+				Position = UDim2.new(0, 8, 0, 0),
+				BackgroundTransparency = 1,
+				Text = selected,
+				TextColor3 = Theme.Text,
+				Font = Enum.Font.Gotham,
+				TextSize = 12,
+				TextXAlignment = Enum.TextXAlignment.Left,
+				ZIndex = 5,
+				Parent = selectedLabel,
+			})
+
+			-- seta (chevron) vetorial em vez de "v" como texto
+			local chevronHolder = create("Frame", {
+				Size = UDim2.new(0, 10, 0, 10),
+				Position = UDim2.new(1, -16, 0.5, -5),
+				BackgroundTransparency = 1,
+				ZIndex = 5,
+				Parent = selectedLabel,
+			})
+			local chevA = create("Frame", {
+				BackgroundColor3 = Theme.SubText,
+				BorderSizePixel = 0,
+				AnchorPoint = Vector2.new(0.5, 0.5),
+				Position = UDim2.new(0.28, 0, 0.5, 0),
+				Size = UDim2.new(0.55, 0, 0.16, 0),
+				Rotation = 45,
+				ZIndex = 5,
+				Parent = chevronHolder,
+			})
+			corner(chevA, 100)
+			local chevB = create("Frame", {
+				BackgroundColor3 = Theme.SubText,
+				BorderSizePixel = 0,
+				AnchorPoint = Vector2.new(0.5, 0.5),
+				Position = UDim2.new(0.72, 0, 0.5, 0),
+				Size = UDim2.new(0.55, 0, 0.16, 0),
+				Rotation = -45,
+				ZIndex = 5,
+				Parent = chevronHolder,
+			})
+			corner(chevB, 100)
 
 			local dropList = create("Frame", {
 				Size = UDim2.new(0.46, 0, 0, #options * 30 + 8),
@@ -831,7 +1160,7 @@ function MacOSLib:CreateWindow(config)
 				end)
 				optBtn.MouseButton1Click:Connect(function()
 					selected = opt
-					selectedLabel.Text = opt .. "  v"
+					selectedText.Text = opt
 					dropList.Visible = false
 					open = false
 					if callback then callback(opt) end
@@ -841,10 +1170,11 @@ function MacOSLib:CreateWindow(config)
 			selectedLabel.MouseButton1Click:Connect(function()
 				open = not open
 				dropList.Visible = open
+				tween(chevronHolder, { Rotation = open and 180 or 0 }, 0.15)
 			end)
 
 			local dd = {}
-			function dd:Set(v) selected = v; selectedLabel.Text = v .. "  v" end
+			function dd:Set(v) selected = v; selectedText.Text = v end
 			function dd:Get() return selected end
 			return dd
 		end
