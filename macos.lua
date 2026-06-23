@@ -120,20 +120,20 @@ Themes.Light = {
 }
 
 Themes.Dark = {
-	Background  = Color3.fromRGB(30, 30, 32),
-	Sidebar     = Color3.fromRGB(24, 24, 26),
-	TopBar      = Color3.fromRGB(26, 26, 28),
+	Background  = Color3.fromRGB(24, 24, 26),
+	Sidebar     = Color3.fromRGB(18, 18, 20),
+	TopBar      = Color3.fromRGB(20, 20, 22),
 	Text        = Color3.fromRGB(235, 235, 238),
 	SubText     = Color3.fromRGB(150, 150, 156),
 	Accent      = Color3.fromRGB(10, 132, 255),
-	Divider     = Color3.fromRGB(55, 55, 58),
-	TabActive   = Color3.fromRGB(50, 50, 54),
-	TabInactive = Color3.fromRGB(30, 30, 32),
+	Divider     = Color3.fromRGB(58, 58, 62),
+	TabActive   = Color3.fromRGB(46, 46, 50),
+	TabInactive = Color3.fromRGB(24, 24, 26),
 	ToggleOn    = Color3.fromRGB(48, 209, 88),
 	ToggleOff   = Color3.fromRGB(80, 80, 85),
 	SliderFill  = Color3.fromRGB(10, 132, 255),
-	SliderBG    = Color3.fromRGB(60, 60, 64),
-	InputBG     = Color3.fromRGB(42, 42, 45),
+	SliderBG    = Color3.fromRGB(64, 64, 68),
+	InputBG     = Color3.fromRGB(56, 56, 60),
 	Shadow      = Color3.fromRGB(0, 0, 0),
 	White       = Color3.fromRGB(245, 245, 247),
 	ButtonBG    = Color3.fromRGB(40, 40, 43),
@@ -208,27 +208,35 @@ Themes.Rose = {
 local Icons = {}
 
 -- desenha uma "linha" fina com ponta redonda entre dois pontos relativos (0–1)
+--
+-- IMPORTANTE: no Roblox, a propriedade Rotation de um Frame SEMPRE
+-- gira em torno do CENTRO do frame, mesmo que o AnchorPoint seja
+-- outro (ex: a ponta esquerda). Isso é uma particularidade conhecida
+-- do motor (rotação ignora AnchorPoint). Por isso usamos AnchorPoint
+-- (0.5, 0.5) e calculamos o PONTO MÉDIO entre (x1,y1) e (x2,y2) como
+-- posição central do frame — assim a rotação em torno do centro
+-- coincide exatamente com o segmento que queremos desenhar.
 local function line(parent, x1, y1, x2, y2, color, thickness)
 	thickness = thickness or 0.085
 	local dx, dy = x2 - x1, y2 - y1
 	local length = math.sqrt(dx * dx + dy * dy)
 	local angle = math.atan2(dy, dx)
+	local midX, midY = (x1 + x2) / 2, (y1 + y2) / 2
 
 	local seg = create("Frame", {
-		AnchorPoint = Vector2.new(0, 0.5),
+		AnchorPoint = Vector2.new(0.5, 0.5),
 		BackgroundColor3 = color,
 		BorderSizePixel = 0,
+		Rotation = math.deg(angle),
 		Parent = parent,
 	})
 	corner(seg, 100)
-	-- usamos UIScale-friendly absolute math via bound to parent size on render
 	local function layout()
 		local absSize = parent.AbsoluteSize
 		local base = math.min(absSize.X, absSize.Y)
 		if base <= 0 then return end
 		seg.Size = UDim2.new(0, length * base, 0, thickness * base)
-		seg.Position = UDim2.new(x1, 0, y1, 0)
-		seg.Rotation = math.deg(angle)
+		seg.Position = UDim2.new(midX, 0, midY, 0)
 	end
 	layout()
 	parent:GetPropertyChangedSignal("AbsoluteSize"):Connect(layout)
@@ -495,7 +503,15 @@ function MacOSLib:CreateWindow(config)
 	local isMaximized = false
 	local isMinimized = false
 
-	local window = create("Frame", {
+	-- IMPORTANTE: usamos CanvasGroup em vez de Frame aqui.
+	-- ClipsDescendants normal SÓ recorta no formato retangular do
+	-- frame, mesmo com UICorner aplicado (isso é uma limitação
+	-- conhecida e documentada do Roblox: UICorner é puramente visual
+	-- e não redefine a área de clipe). CanvasGroup é o único jeito
+	-- confiável de fazer o corte respeitar o canto arredondado de
+	-- verdade — é ele que resolve o bug dos "cantos retos" no topo
+	-- e na lateral esquerda que apareciam antes.
+	local window = create("CanvasGroup", {
 		Name = "Window",
 		Size = restoreSize,
 		Position = restorePos,
@@ -713,18 +729,11 @@ function MacOSLib:CreateWindow(config)
 	Window._themeName = themeName
 
 	-- ── Sistema de troca de tema em tempo real ──────────────
-	-- Guarda referências dos elementos que precisam ser
-	-- repintados quando o tema muda, pra não precisar recriar
-	-- a janela inteira.
-	Window._paintables = {
-		{ obj = window, prop = "BackgroundColor3", key = "Background" },
-		{ obj = topbar, prop = "BackgroundColor3", key = "TopBar" },
-		{ obj = topbarDivider, prop = "BackgroundColor3", key = "Divider" },
-		{ obj = sidebar, prop = "BackgroundColor3", key = "Sidebar" },
-		{ obj = sidebarDivider, prop = "BackgroundColor3", key = "Divider" },
-		{ obj = titleLabel, prop = "TextColor3", key = "Text" },
-		{ obj = subtitleLabel, prop = "TextColor3", key = "SubText" },
-	}
+	-- Cada widget criado (botão, slider, dropdown, etc.) registra
+	-- sua própria função de repaint em tab._widgets. Quando o tema
+	-- muda, percorremos todas as tabs já criadas e chamamos essas
+	-- funções, que atualizam cor/transparência sem precisar recriar
+	-- nenhuma instância.
 
 	function Window:SetTheme(newThemeName)
 		local NewTheme = Themes[newThemeName]
@@ -740,7 +749,10 @@ function MacOSLib:CreateWindow(config)
 		tween(sidebarDivider, { BackgroundColor3 = NewTheme.Divider }, 0.25)
 		tween(titleLabel, { TextColor3 = NewTheme.Text }, 0.25)
 		tween(subtitleLabel, { TextColor3 = NewTheme.SubText }, 0.25)
-		tween(window:FindFirstChildOfClass("UIStroke"), { Color = NewTheme.Divider }, 0.25)
+		local windowStroke = window:FindFirstChildOfClass("UIStroke")
+		if windowStroke then
+			tween(windowStroke, { Color = NewTheme.Divider }, 0.25)
+		end
 
 		-- repinta todas as tabs, páginas e widgets já criados
 		for _, t in pairs(Window._tabs) do
@@ -780,7 +792,7 @@ function MacOSLib:CreateWindow(config)
 		local notif = create("Frame", {
 			Size = UDim2.new(0, 260, 0, 64),
 			Position = UDim2.new(1, 10, 1, -80),
-			BackgroundColor3 = T.White,
+			BackgroundColor3 = T.ButtonBG,
 			BorderSizePixel = 0,
 			ZIndex = 50,
 			Parent = gui,
@@ -793,7 +805,7 @@ function MacOSLib:CreateWindow(config)
 			Position = UDim2.new(0, 14, 0, 10),
 			BackgroundTransparency = 1,
 			Text = ntitle,
-			TextColor3 = Color3.fromRGB(20, 20, 22),
+			TextColor3 = T.Text,
 			Font = Enum.Font.GothamBold,
 			TextSize = 13,
 			TextXAlignment = Enum.TextXAlignment.Left,
@@ -805,7 +817,7 @@ function MacOSLib:CreateWindow(config)
 			Position = UDim2.new(0, 14, 0, 32),
 			BackgroundTransparency = 1,
 			Text = message,
-			TextColor3 = Color3.fromRGB(110, 110, 115),
+			TextColor3 = T.SubText,
 			Font = Enum.Font.Gotham,
 			TextSize = 11,
 			TextXAlignment = Enum.TextXAlignment.Left,
