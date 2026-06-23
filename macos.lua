@@ -85,12 +85,1223 @@ local function makeDraggable(frame, handle)
 end
 
 -- ══════════════════════════════════════════════════════════
+--   SISTEMA DE ÍCONES LUCIDE (v2)
+--
+--   Abordagem: cada ícone é desenhado com uma função que
+--   recebe um Frame container (quadrado) e uma cor, e
+--   posiciona elementos dentro dele usando coordenadas
+--   normalizadas (0–1). Os paths seguem fielmente os SVG
+--   originais do Lucide (viewBox 24x24, stroke-width 2,
+--   stroke-linecap round, stroke-linejoin round).
+--
+--   Funções auxiliares internas:
+--     ln(p, x1,y1,x2,y2, cor, esp)  → segmento de reta
+--     cr(p, cx,cy, r, cor, esp)      → círculo (ring)
+--     rr(p, x,y,w,h, cor, rad)       → rect arredondado
+--     ar(p, cx,cy, r, a0,a1, cor, esp, segs) → arco
+--     pt(p, pontos, cor, esp)        → polyline (lista de {x,y})
+--
+--   Os ícones ficam em MacOSLib.Icons e são referenciados
+--   pelo nome em kebab-case do Lucide, ex:
+--     "house", "settings", "palette", "volume-2", "info",
+--     "bell", "star", "shield", "monitor", "user", "sliders-horizontal"
+--
+--   Para usar em CreateTab passe o nome como string:
+--     Win:CreateTab("Principal", "house")
+-- ══════════════════════════════════════════════════════════
+
+local Icons = {}
+
+-- ── primitivos ────────────────────────────────────────────
+
+-- segmento de reta com pontas redondas (replica stroke-linecap:round do Lucide)
+-- coordenadas normalizadas 0–1 dentro do container
+local function ln(parent, x1, y1, x2, y2, color, thickness)
+	thickness = thickness or 0.08
+	local dx, dy = x2 - x1, y2 - y1
+	local length = math.sqrt(dx * dx + dy * dy)
+	if length < 0.001 then return end
+	local angle = math.atan2(dy, dx)
+	local midX, midY = (x1 + x2) / 2, (y1 + y2) / 2
+
+	local seg = create("Frame", {
+		AnchorPoint = Vector2.new(0.5, 0.5),
+		BackgroundColor3 = color,
+		BorderSizePixel = 0,
+		Rotation = math.deg(angle),
+		Parent = parent,
+	})
+	local c = Instance.new("UICorner")
+	c.CornerRadius = UDim.new(1, 0)
+	c.Parent = seg
+
+	local function layout()
+		local abs = parent.AbsoluteSize
+		local base = math.min(abs.X, abs.Y)
+		if base <= 0 then return end
+		seg.Size = UDim2.new(0, length * base, 0, thickness * base)
+		seg.Position = UDim2.new(midX, 0, midY, 0)
+	end
+	layout()
+	parent:GetPropertyChangedSignal("AbsoluteSize"):Connect(layout)
+	return seg
+end
+
+-- círculo (apenas contorno)
+local function cr(parent, cx, cy, r, color, thickness)
+	thickness = thickness or 0.08
+	local ring = create("Frame", {
+		AnchorPoint = Vector2.new(0.5, 0.5),
+		BackgroundTransparency = 1,
+		Parent = parent,
+	})
+	corner(ring, 100)
+	local s = stroke(ring, color, 2, 0)
+	local function layout()
+		local abs = parent.AbsoluteSize
+		local base = math.min(abs.X, abs.Y)
+		if base <= 0 then return end
+		ring.Position = UDim2.new(cx, 0, cy, 0)
+		ring.Size = UDim2.new(0, r * 2 * base, 0, r * 2 * base)
+		s.Thickness = math.max(1, thickness * base)
+	end
+	layout()
+	parent:GetPropertyChangedSignal("AbsoluteSize"):Connect(layout)
+	return ring
+end
+
+-- retângulo arredondado (apenas contorno)
+local function rr(parent, x, y, w, h, color, rad, thickness)
+	thickness = thickness or 0.08
+	local f = create("Frame", {
+		BackgroundTransparency = 1,
+		Position = UDim2.new(x, 0, y, 0),
+		Size = UDim2.new(w, 0, h, 0),
+		Parent = parent,
+	})
+	corner(f, rad or 3)
+	local s = stroke(f, color, 2, 0)
+	local function layout()
+		local abs = parent.AbsoluteSize
+		local base = math.min(abs.X, abs.Y)
+		if base <= 0 then return end
+		s.Thickness = math.max(1, thickness * base)
+	end
+	layout()
+	parent:GetPropertyChangedSignal("AbsoluteSize"):Connect(layout)
+	return f
+end
+
+-- arco (aprox. por segmentos)
+local function ar(parent, cx, cy, r, startDeg, endDeg, color, thickness, segs)
+	segs = segs or 10
+	thickness = thickness or 0.08
+	local prev = nil
+	for i = 0, segs do
+		local t = i / segs
+		local a = math.rad(startDeg + (endDeg - startDeg) * t)
+		local px = cx + math.cos(a) * r
+		local py = cy + math.sin(a) * r
+		if prev then
+			ln(parent, prev[1], prev[2], px, py, color, thickness)
+		end
+		prev = {px, py}
+	end
+end
+
+-- polyline: lista de {x, y} em coordenadas normalizadas
+local function pt(parent, points, color, thickness)
+	for i = 1, #points - 1 do
+		ln(parent, points[i][1], points[i][2], points[i+1][1], points[i+1][2], color, thickness)
+	end
+end
+
+-- ponto (dot) preenchido
+local function dot(parent, cx, cy, r, color)
+	local d = create("Frame", {
+		AnchorPoint = Vector2.new(0.5, 0.5),
+		BackgroundColor3 = color,
+		BorderSizePixel = 0,
+		Parent = parent,
+	})
+	corner(d, 100)
+	local function layout()
+		local abs = parent.AbsoluteSize
+		local base = math.min(abs.X, abs.Y)
+		if base <= 0 then return end
+		d.Position = UDim2.new(cx, 0, cy, 0)
+		d.Size = UDim2.new(0, r * 2 * base, 0, r * 2 * base)
+	end
+	layout()
+	parent:GetPropertyChangedSignal("AbsoluteSize"):Connect(layout)
+	return d
+end
+
+-- ── ícones Lucide ─────────────────────────────────────────
+-- Cada ícone segue fielmente o SVG original do Lucide (viewBox 0 0 24 24).
+-- As coordenadas são divididas por 24 para normalizar em 0–1.
+-- ── Escala: coord_lucide / 24
+
+-- house  (Lucide: path "M15 21v-8a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v8"
+--         + path "M3 10.977V19a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-8.101"
+--         + path "M3 10.977 10.328 4.57a2 2 0 0 1 2.7-.089L21 10.977")
+Icons["house"] = function(parent, color)
+	-- telhado (duas retas para o pico)
+	pt(parent, {
+		{3/24, 10.977/24},
+		{10.328/24, 4.57/24},
+	}, color)
+	pt(parent, {
+		{10.328/24, 4.57/24},
+		{21/24, 10.977/24},
+	}, color)
+	-- paredes laterais + base
+	pt(parent, {
+		{3/24, 10.977/24},
+		{3/24, 19/24},
+		{21/24, 19/24},
+		{21/24, 10.977/24},
+	}, color)
+	-- porta
+	pt(parent, {
+		{10/24, 21/24},
+		{10/24, 13/24},
+		{14/24, 13/24},
+		{14/24, 21/24},
+	}, color)
+	ln(parent, 3/24, 21/24, 21/24, 21/24, color)
+end
+
+-- settings (engrenagem — Lucide: path com anel central + 8 dentes)
+Icons["settings"] = function(parent, color)
+	cr(parent, 0.5, 0.5, 0.125, color)
+	local teeth = 8
+	for i = 1, teeth do
+		local a = math.rad((i - 1) * 45)
+		-- dentes mais fiéis ao Lucide (largura proporcional)
+		local aOff = math.rad(8)
+		local r1, r2 = 0.295, 0.42
+		local p1x = 0.5 + math.cos(a - aOff) * r1
+		local p1y = 0.5 + math.sin(a - aOff) * r1
+		local p2x = 0.5 + math.cos(a - aOff) * r2
+		local p2y = 0.5 + math.sin(a - aOff) * r2
+		local p3x = 0.5 + math.cos(a + aOff) * r2
+		local p3y = 0.5 + math.sin(a + aOff) * r2
+		local p4x = 0.5 + math.cos(a + aOff) * r1
+		local p4y = 0.5 + math.sin(a + aOff) * r1
+		pt(parent, {
+			{p1x, p1y}, {p2x, p2y}, {p3x, p3y}, {p4x, p4y},
+		}, color, 0.07)
+	end
+end
+
+-- settings-2 (variante mais limpa — igual ao "settings-2" do Lucide)
+Icons["settings-2"] = function(parent, color)
+	-- 3 linhas horizontais com círculo de ajuste em cada
+	local ys = {0.28, 0.5, 0.72}
+	local kx = {0.65, 0.35, 0.55}
+	for i, y in ipairs(ys) do
+		ln(parent, 0.1, y, 0.9, y, color, 0.07)
+		cr(parent, kx[i], y, 0.07, color, 0.08)
+	end
+end
+
+-- sliders-horizontal
+Icons["sliders-horizontal"] = function(parent, color)
+	local ys = {0.28, 0.5, 0.72}
+	local kx = {0.65, 0.35, 0.55}
+	for i, y in ipairs(ys) do
+		ln(parent, 0.1, y, 0.9, y, color, 0.07)
+		dot(parent, kx[i], y, 0.07, color)
+	end
+end
+
+-- palette (Lucide: círculo com buraco + gotas de tinta)
+Icons["palette"] = function(parent, color)
+	-- corpo circular grande
+	ar(parent, 0.5, 0.5, 0.4, -30, 280, color, 0.08, 14)
+	-- "polegar" (thumb notch) no canto inferior direito
+	ar(parent, 0.72, 0.68, 0.1, 90, 360, color, 0.08, 8)
+	-- pontos de cor
+	dot(parent, 0.35, 0.32, 0.055, color)
+	dot(parent, 0.55, 0.27, 0.055, color)
+	dot(parent, 0.72, 0.40, 0.055, color)
+	dot(parent, 0.38, 0.62, 0.055, color)
+end
+
+-- volume-2 (Lucide)
+Icons["volume-2"] = function(parent, color)
+	-- corpo do alto-falante
+	pt(parent, {
+		{11/24, 5/24},
+		{6/24, 9/24},
+		{2/24, 9/24},
+		{2/24, 15/24},
+		{6/24, 15/24},
+		{11/24, 19/24},
+		{11/24, 5/24},
+	}, color)
+	-- onda 1
+	ar(parent, 11/24, 12/24, 3.5/24, -45, 45, color, 0.08, 6)
+	-- onda 2
+	ar(parent, 11/24, 12/24, 6/24, -55, 55, color, 0.08, 8)
+end
+
+-- volume (sem ondas)
+Icons["volume"] = function(parent, color)
+	pt(parent, {
+		{11/24, 5/24},
+		{6/24, 9/24},
+		{2/24, 9/24},
+		{2/24, 15/24},
+		{6/24, 15/24},
+		{11/24, 19/24},
+		{11/24, 5/24},
+	}, color)
+	ar(parent, 11/24, 12/24, 3.5/24, -45, 45, color, 0.08, 6)
+end
+
+-- volume-x (mudo)
+Icons["volume-x"] = function(parent, color)
+	pt(parent, {
+		{11/24, 5/24},
+		{6/24, 9/24},
+		{2/24, 9/24},
+		{2/24, 15/24},
+		{6/24, 15/24},
+		{11/24, 19/24},
+		{11/24, 5/24},
+	}, color)
+	ln(parent, 23/24, 9/24, 17/24, 15/24, color)
+	ln(parent, 17/24, 9/24, 23/24, 15/24, color)
+end
+
+-- info (Lucide: círculo + ponto + linha)
+Icons["info"] = function(parent, color)
+	cr(parent, 0.5, 0.5, 0.41, color)
+	dot(parent, 0.5, 7.5/24, 0.04, color)
+	ln(parent, 0.5, 11/24, 0.5, 17/24, color)
+end
+
+-- bell (Lucide)
+Icons["bell"] = function(parent, color)
+	-- arco superior do sino
+	ar(parent, 12/24, 10/24, 6/24, 200, 340, color, 0.08, 8)
+	-- haste do sino (corpo)
+	ln(parent, 6/24, 10/24, 6/24, 16/24, color)
+	ln(parent, 18/24, 10/24, 18/24, 16/24, color)
+	-- borda inferior
+	ln(parent, 4/24, 16/24, 20/24, 16/24, color)
+	-- clapper (lingueta)
+	ar(parent, 12/24, 16/24, 2/24, 0, 180, color, 0.08, 6)
+	-- haste do badalo no topo
+	ln(parent, 12/24, 2/24, 12/24, 4/24, color)
+end
+
+-- bell-off
+Icons["bell-off"] = function(parent, color)
+	ln(parent, 8/24, 8/24, 6/24, 10/24, color)
+	ln(parent, 6/24, 10/24, 6/24, 16/24, color)
+	ln(parent, 4/24, 16/24, 20/24, 16/24, color)
+	ar(parent, 12/24, 16/24, 2/24, 0, 180, color, 0.08, 6)
+	ln(parent, 12/24, 2/24, 12/24, 4/24, color)
+	ar(parent, 12/24, 10/24, 6/24, -20, 160, color, 0.08, 6)
+	ln(parent, 18/24, 10/24, 18/24, 16/24, color)
+	ln(parent, 2/24, 2/24, 22/24, 22/24, color)
+end
+
+-- star (Lucide: estrela 5 pontas)
+Icons["star"] = function(parent, color)
+	local pts = {}
+	for i = 0, 9 do
+		local a = math.rad(-90 + i * 36)
+		local r = (i % 2 == 0) and 0.43 or 0.18
+		table.insert(pts, {0.5 + math.cos(a) * r, 0.52 + math.sin(a) * r})
+	end
+	table.insert(pts, pts[1])
+	pt(parent, pts, color)
+end
+
+-- shield (Lucide)
+Icons["shield"] = function(parent, color)
+	pt(parent, {
+		{12/24, 22/24},
+		{4/24, 16/24},
+		{4/24, 6.5/24},
+		{12/24, 2/24},
+		{20/24, 6.5/24},
+		{20/24, 16/24},
+		{12/24, 22/24},
+	}, color)
+end
+
+-- shield-check
+Icons["shield-check"] = function(parent, color)
+	pt(parent, {
+		{12/24, 22/24},
+		{4/24, 16/24},
+		{4/24, 6.5/24},
+		{12/24, 2/24},
+		{20/24, 6.5/24},
+		{20/24, 16/24},
+		{12/24, 22/24},
+	}, color)
+	pt(parent, {
+		{8/24, 12/24},
+		{11/24, 15/24},
+		{16/24, 9/24},
+	}, color)
+end
+
+-- monitor (Lucide)
+Icons["monitor"] = function(parent, color)
+	rr(parent, 2/24, 3/24, 20/24, 14/24, color, 5)
+	ln(parent, 12/24, 17/24, 12/24, 21/24, color)
+	ln(parent, 8/24, 21/24, 16/24, 21/24, color)
+end
+
+-- monitor-check
+Icons["monitor-check"] = function(parent, color)
+	rr(parent, 2/24, 3/24, 20/24, 14/24, color, 5)
+	ln(parent, 12/24, 17/24, 12/24, 21/24, color)
+	ln(parent, 8/24, 21/24, 16/24, 21/24, color)
+	pt(parent, {
+		{7.5/24, 10.5/24},
+		{10/24, 13/24},
+		{16.5/24, 7.5/24},
+	}, color)
+end
+
+-- user (Lucide)
+Icons["user"] = function(parent, color)
+	cr(parent, 12/24, 7/24, 4/24, color)
+	ar(parent, 12/24, 22/24, 8/24, 195, 345, color, 0.08, 10)
+end
+
+-- user-round
+Icons["user-round"] = function(parent, color)
+	cr(parent, 0.5, 7.5/24, 0.167, color)
+	ar(parent, 0.5, 22/24, 8.5/24, 195, 345, color, 0.08, 10)
+end
+
+-- users (Lucide — dois usuários)
+Icons["users"] = function(parent, color)
+	cr(parent, 9/24, 7/24, 3.5/24, color)
+	ar(parent, 9/24, 21/24, 7/24, 200, 340, color, 0.08, 8)
+	ln(parent, 22/24, 21/24, 22/24, 15/24, color)
+	ar(parent, 19/24, 7/24, 3/24, -50, 55, color, 0.08, 5)
+	ar(parent, 22/24, 21/24, 5/24, 210, 330, color, 0.08, 6)
+end
+
+-- check (Lucide: apenas o tick)
+Icons["check"] = function(parent, color)
+	pt(parent, {
+		{4/24, 12/24},
+		{9/24, 17/24},
+		{20/24, 6/24},
+	}, color)
+end
+
+-- check-circle
+Icons["check-circle"] = function(parent, color)
+	ar(parent, 0.5, 0.5, 0.41, 30, 330, color, 0.08, 12)
+	pt(parent, {
+		{8/24, 12/24},
+		{11/24, 15/24},
+		{16/24, 9/24},
+	}, color)
+end
+
+-- circle (simples)
+Icons["circle"] = function(parent, color)
+	cr(parent, 0.5, 0.5, 0.41, color)
+end
+
+-- x (fechar)
+Icons["x"] = function(parent, color)
+	ln(parent, 5/24, 5/24, 19/24, 19/24, color)
+	ln(parent, 19/24, 5/24, 5/24, 19/24, color)
+end
+
+-- x-circle
+Icons["x-circle"] = function(parent, color)
+	cr(parent, 0.5, 0.5, 0.41, color)
+	ln(parent, 9/24, 9/24, 15/24, 15/24, color)
+	ln(parent, 15/24, 9/24, 9/24, 15/24, color)
+end
+
+-- alert-triangle (Lucide)
+Icons["alert-triangle"] = function(parent, color)
+	pt(parent, {
+		{12/24, 2/24},
+		{2/24, 22/24},
+		{22/24, 22/24},
+		{12/24, 2/24},
+	}, color)
+	ln(parent, 12/24, 9/24, 12/24, 14/24, color)
+	dot(parent, 12/24, 18/24, 0.04, color)
+end
+
+-- alert-circle
+Icons["alert-circle"] = function(parent, color)
+	cr(parent, 0.5, 0.5, 0.41, color)
+	ln(parent, 12/24, 8/24, 12/24, 13/24, color)
+	dot(parent, 12/24, 17/24, 0.04, color)
+end
+
+-- search (lupa — Lucide)
+Icons["search"] = function(parent, color)
+	cr(parent, 11/24, 11/24, 7/24, color)
+	ln(parent, 21/24, 21/24, 16.65/24, 16.65/24, color)
+end
+
+-- eye (Lucide)
+Icons["eye"] = function(parent, color)
+	ar(parent, 0.5, 0.5, 0.4, -30, 210, color, 0.08, 10)
+	ar(parent, 0.5, 0.5, 0.4, 330, 570, color, 0.08, 10)
+	cr(parent, 0.5, 0.5, 0.125, color)
+end
+
+-- eye-off
+Icons["eye-off"] = function(parent, color)
+	ar(parent, 0.5, 0.5, 0.4, -30, 120, color, 0.08, 7)
+	ar(parent, 0.5, 0.5, 0.4, 330, 480, color, 0.08, 7)
+	ln(parent, 2/24, 2/24, 22/24, 22/24, color)
+end
+
+-- lock (Lucide)
+Icons["lock"] = function(parent, color)
+	rr(parent, 3/24, 11/24, 18/24, 11/24, color, 4)
+	ar(parent, 0.5, 11/24, 5/24, 195, 345, color, 0.08, 8)
+	dot(parent, 0.5, 16/24, 0.04, color)
+end
+
+-- unlock
+Icons["unlock"] = function(parent, color)
+	rr(parent, 3/24, 11/24, 18/24, 11/24, color, 4)
+	ar(parent, 0.5, 11/24, 5/24, 200, 360, color, 0.08, 8)
+	ln(parent, 17/24, 6/24, 17/24, 11/24, color)
+end
+
+-- key (Lucide)
+Icons["key"] = function(parent, color)
+	cr(parent, 8/24, 10/24, 5/24, color)
+	ln(parent, 13/24, 14.5/24, 21/24, 6/24, color)
+	ln(parent, 19/24, 8/24, 21/24, 6/24, color)
+	ln(parent, 19/24, 8/24, 17/24, 10/24, color)
+end
+
+-- download (Lucide)
+Icons["download"] = function(parent, color)
+	ln(parent, 12/24, 3/24, 12/24, 15/24, color)
+	pt(parent, {
+		{7/24, 10/24},
+		{12/24, 15/24},
+		{17/24, 10/24},
+	}, color)
+	ln(parent, 3/24, 21/24, 21/24, 21/24, color)
+end
+
+-- upload (Lucide)
+Icons["upload"] = function(parent, color)
+	ln(parent, 12/24, 15/24, 12/24, 3/24, color)
+	pt(parent, {
+		{7/24, 8/24},
+		{12/24, 3/24},
+		{17/24, 8/24},
+	}, color)
+	ln(parent, 3/24, 21/24, 21/24, 21/24, color)
+end
+
+-- refresh-cw (Lucide — setas circulares)
+Icons["refresh-cw"] = function(parent, color)
+	ar(parent, 0.5, 0.5, 0.38, -60, 210, color, 0.08, 12)
+	-- seta no fim
+	pt(parent, {
+		{21/24, 8/24},
+		{20.4/24, 3/24},
+		{15.5/24, 3.5/24},
+	}, color)
+	ar(parent, 0.5, 0.5, 0.38, 120, 390, color, 0.08, 12)
+	pt(parent, {
+		{3/24, 16/24},
+		{3.6/24, 21/24},
+		{8.5/24, 20.5/24},
+	}, color)
+end
+
+-- trash-2 (Lucide)
+Icons["trash-2"] = function(parent, color)
+	ln(parent, 3/24, 6/24, 21/24, 6/24, color)
+	pt(parent, {
+		{8/24, 6/24},
+		{8/24, 21/24},
+		{16/24, 21/24},
+		{16/24, 6/24},
+	}, color)
+	ln(parent, 19/24, 6/24, 19/24, 4/24, color)
+	ln(parent, 5/24, 6/24, 5/24, 4/24, color)
+	rr(parent, 5/24, 2/24, 14/24, 2.5/24, color, 2)
+	ln(parent, 10/24, 11/24, 10/24, 17/24, color)
+	ln(parent, 14/24, 11/24, 14/24, 17/24, color)
+end
+
+-- edit (Lucide: lápis)
+Icons["edit"] = function(parent, color)
+	pt(parent, {
+		{3/24, 17/24},
+		{16/24, 4/24},
+		{20/24, 8/24},
+		{7/24, 21/24},
+		{3/24, 21/24},
+		{3/24, 17/24},
+	}, color)
+	ln(parent, 14/24, 6/24, 18/24, 10/24, color)
+end
+
+-- copy (Lucide)
+Icons["copy"] = function(parent, color)
+	rr(parent, 9/24, 1/24, 13/24, 13/24, color, 3)
+	rr(parent, 2/24, 7/24, 13/24, 15/24, color, 3)
+end
+
+-- clipboard (Lucide)
+Icons["clipboard"] = function(parent, color)
+	rr(parent, 5/24, 3/24, 14/24, 18/24, color, 4)
+	rr(parent, 9/24, 1/24, 6/24, 4/24, color, 3)
+end
+
+-- send (Lucide — avião de papel)
+Icons["send"] = function(parent, color)
+	pt(parent, {
+		{22/24, 2/24},
+		{11/24, 13/24},
+	}, color)
+	pt(parent, {
+		{22/24, 2/24},
+		{15/24, 22/24},
+		{11/24, 13/24},
+		{2/24, 9/24},
+		{22/24, 2/24},
+	}, color)
+end
+
+-- message-circle (Lucide)
+Icons["message-circle"] = function(parent, color)
+	ar(parent, 0.5, 0.458, 0.383, -60, 245, color, 0.08, 12)
+	pt(parent, {
+		{5/24, 19/24},
+		{2/24, 22/24},
+	}, color)
+end
+
+-- mail (Lucide)
+Icons["mail"] = function(parent, color)
+	rr(parent, 2/24, 4/24, 20/24, 16/24, color, 4)
+	pt(parent, {
+		{2/24, 7/24},
+		{12/24, 13/24},
+		{22/24, 7/24},
+	}, color)
+end
+
+-- link (Lucide)
+Icons["link"] = function(parent, color)
+	ar(parent, 9/24, 12/24, 3.5/24, 90, 270, color, 0.08, 8)
+	ar(parent, 15/24, 12/24, 3.5/24, -90, 90, color, 0.08, 8)
+	ln(parent, 9/24, 12/24, 15/24, 12/24, color)
+	ln(parent, 9/24, 8.5/24, 15/24, 8.5/24, color)
+	ln(parent, 9/24, 15.5/24, 15/24, 15.5/24, color)
+end
+
+-- external-link
+Icons["external-link"] = function(parent, color)
+	pt(parent, {
+		{18/24, 13/24},
+		{18/24, 19/24},
+		{5/24, 19/24},
+		{5/24, 6/24},
+		{11/24, 6/24},
+	}, color)
+	ln(parent, 15/24, 3/24, 21/24, 3/24, color)
+	ln(parent, 21/24, 3/24, 21/24, 9/24, color)
+	ln(parent, 10/24, 14/24, 21/24, 3/24, color)
+end
+
+-- home (alias de house)
+Icons["home"] = Icons["house"]
+
+-- layers
+Icons["layers"] = function(parent, color)
+	pt(parent, {
+		{2/24, 12/24}, {12/24, 17/24}, {22/24, 12/24},
+	}, color)
+	pt(parent, {
+		{2/24, 7/24}, {12/24, 12/24}, {22/24, 7/24}, {12/24, 2/24}, {2/24, 7/24},
+	}, color)
+	pt(parent, {
+		{2/24, 17/24}, {12/24, 22/24}, {22/24, 17/24},
+	}, color)
+end
+
+-- package (Lucide)
+Icons["package"] = function(parent, color)
+	pt(parent, {
+		{16.5/24, 9.4/24}, {7.5/24, 4.21/24},
+	}, color)
+	pt(parent, {
+		{21/24, 16/24}, {21/24, 8/24}, {12/24, 3/24},
+		{3/24, 8/24}, {3/24, 16/24}, {12/24, 21/24}, {21/24, 16/24},
+	}, color)
+	ln(parent, 3.27/24, 6.96/24, 12/24, 12.01/24, color)
+	ln(parent, 12/24, 22.08/24, 12/24, 12/24, color)
+end
+
+-- code (Lucide: colchetes angulares)
+Icons["code"] = function(parent, color)
+	pt(parent, {
+		{16/24, 18/24}, {22/24, 12/24}, {16/24, 6/24},
+	}, color)
+	pt(parent, {
+		{8/24, 6/24}, {2/24, 12/24}, {8/24, 18/24},
+	}, color)
+end
+
+-- terminal
+Icons["terminal"] = function(parent, color)
+	pt(parent, {
+		{4/24, 17/24}, {10/24, 12/24}, {4/24, 7/24},
+	}, color)
+	ln(parent, 12/24, 19/24, 20/24, 19/24, color)
+end
+
+-- cpu
+Icons["cpu"] = function(parent, color)
+	rr(parent, 7/24, 7/24, 10/24, 10/24, color, 3)
+	rr(parent, 2/24, 2/24, 20/24, 20/24, color, 3)
+	for i = 1, 3 do
+		local y = (6 + i * 3) / 24
+		ln(parent, 2/24, y, 7/24, y, color)
+		ln(parent, 17/24, y, 22/24, y, color)
+	end
+	for i = 1, 3 do
+		local x = (6 + i * 3) / 24
+		ln(parent, x, 2/24, x, 7/24, color)
+		ln(parent, x, 17/24, x, 22/24, color)
+	end
+end
+
+-- wifi
+Icons["wifi"] = function(parent, color)
+	ar(parent, 0.5, 14/24, 10.5/24, 225, 315, color, 0.08, 5)
+	ar(parent, 0.5, 14/24, 7/24, 225, 315, color, 0.08, 5)
+	ar(parent, 0.5, 14/24, 3.5/24, 225, 315, color, 0.08, 5)
+	dot(parent, 0.5, 20/24, 0.045, color)
+end
+
+-- bluetooth
+Icons["bluetooth"] = function(parent, color)
+	pt(parent, {
+		{6.5/24, 8.5/24}, {17.5/24, 15.5/24},
+		{12/24, 20/24}, {12/24, 4/24},
+		{17.5/24, 8.5/24}, {6.5/24, 15.5/24},
+	}, color)
+end
+
+-- battery
+Icons["battery"] = function(parent, color)
+	rr(parent, 2/24, 7/24, 18/24, 10/24, color, 3)
+	ln(parent, 22/24, 10/24, 22/24, 14/24, color)
+end
+
+-- battery-charging
+Icons["battery-charging"] = function(parent, color)
+	pt(parent, {
+		{5/24, 7/24}, {2/24, 7/24}, {2/24, 17/24},
+		{13/24, 17/24}, {13/24, 13/24}, {20/24, 13/24},
+	}, color)
+	pt(parent, {
+		{11/24, 7/24}, {7/24, 13/24}, {13/24, 13/24}, {9/24, 19/24},
+	}, color)
+	ln(parent, 22/24, 10/24, 22/24, 14/24, color)
+end
+
+-- map-pin (Lucide)
+Icons["map-pin"] = function(parent, color)
+	ar(parent, 12/24, 10/24, 6/24, 180, 360, color, 0.08, 10)
+	ar(parent, 12/24, 10/24, 6/24, 0, 90, color, 0.08, 5)
+	ln(parent, 18/24, 10/24, 12/24, 22/24, color)
+	ln(parent, 12/24, 22/24, 6/24, 10/24, color)
+end
+
+-- globe
+Icons["globe"] = function(parent, color)
+	cr(parent, 0.5, 0.5, 0.41, color)
+	ar(parent, 0.5, 0.5, 0.18, 90, 270, color, 0.08, 6)
+	ar(parent, 0.5, 0.5, 0.18, -90, 90, color, 0.08, 6)
+	ln(parent, 2/24, 12/24, 22/24, 12/24, color)
+	ln(parent, 12/24, 2/24, 12/24, 22/24, color)
+end
+
+-- image (Lucide)
+Icons["image"] = function(parent, color)
+	rr(parent, 3/24, 3/24, 18/24, 18/24, color, 4)
+	cr(parent, 8.5/24, 8.5/24, 1.5/24, color)
+	pt(parent, {
+		{3/24, 15/24},
+		{8/24, 10/24},
+		{12/24, 14/24},
+		{15/24, 11/24},
+		{21/24, 17/24},
+	}, color)
+end
+
+-- music
+Icons["music"] = function(parent, color)
+	ln(parent, 9/24, 18/24, 9/24, 5/24, color)
+	ln(parent, 15/24, 16/24, 15/24, 3/24, color)
+	ln(parent, 9/24, 5/24, 15/24, 3/24, color)
+	cr(parent, 6/24, 18/24, 3/24, color)
+	cr(parent, 12/24, 16/24, 3/24, color)
+end
+
+-- mic
+Icons["mic"] = function(parent, color)
+	rr(parent, 9/24, 2/24, 6/24, 12/24, color, 100)
+	ar(parent, 12/24, 14/24, 8/24, 0, 180, color, 0.08, 8)
+	ln(parent, 12/24, 22/24, 12/24, 18.5/24, color)
+	ln(parent, 8/24, 22/24, 16/24, 22/24, color)
+end
+
+-- headphones
+Icons["headphones"] = function(parent, color)
+	ar(parent, 12/24, 10/24, 9/24, 200, 340, color, 0.08, 10)
+	rr(parent, 3/24, 14/24, 3.5/24, 6/24, color, 100)
+	rr(parent, 17.5/24, 14/24, 3.5/24, 6/24, color, 100)
+end
+
+-- camera
+Icons["camera"] = function(parent, color)
+	rr(parent, 2/24, 6/24, 20/24, 16/24, color, 4)
+	pt(parent, {
+		{8/24, 6/24}, {10/24, 2/24}, {14/24, 2/24}, {16/24, 6/24},
+	}, color)
+	cr(parent, 12/24, 13/24, 3.5/24, color)
+end
+
+-- video
+Icons["video"] = function(parent, color)
+	rr(parent, 2/24, 7/24, 14/24, 10/24, color, 4)
+	pt(parent, {
+		{16/24, 9/24}, {22/24, 5/24}, {22/24, 19/24}, {16/24, 15/24},
+	}, color)
+end
+
+-- film
+Icons["film"] = function(parent, color)
+	rr(parent, 2/24, 2/24, 20/24, 20/24, color, 4)
+	ln(parent, 7/24, 2/24, 7/24, 22/24, color)
+	ln(parent, 17/24, 2/24, 17/24, 22/24, color)
+	ln(parent, 2/24, 12/24, 22/24, 12/24, color)
+	ln(parent, 2/24, 7/24, 7/24, 7/24, color)
+	ln(parent, 2/24, 17/24, 7/24, 17/24, color)
+	ln(parent, 17/24, 7/24, 22/24, 7/24, color)
+	ln(parent, 17/24, 17/24, 22/24, 17/24, color)
+end
+
+-- book
+Icons["book"] = function(parent, color)
+	pt(parent, {
+		{4/24, 19/24},
+		{4/24, 3/24},
+		{12/24, 3/24},
+		{12/24, 19/24},
+		{4/24, 19/24},
+	}, color)
+	ln(parent, 12/24, 3/24, 20/24, 3/24, color)
+	ln(parent, 20/24, 3/24, 20/24, 19/24, color)
+	ln(parent, 4/24, 19/24, 20/24, 19/24, color)
+	ln(parent, 12/24, 3/24, 12/24, 19/24, color)
+end
+
+-- bookmark
+Icons["bookmark"] = function(parent, color)
+	pt(parent, {
+		{19/24, 21/24},
+		{12/24, 16/24},
+		{5/24, 21/24},
+		{5/24, 3/24},
+		{19/24, 3/24},
+		{19/24, 21/24},
+	}, color)
+end
+
+-- tag
+Icons["tag"] = function(parent, color)
+	pt(parent, {
+		{12/24, 2/24},
+		{2/24, 2/24},
+		{2/24, 12/24},
+		{17.27/24, 22.73/24},
+		{22/24, 18/24},
+		{12/24, 2/24},
+	}, color)
+	dot(parent, 7/24, 7/24, 0.04, color)
+end
+
+-- folder
+Icons["folder"] = function(parent, color)
+	pt(parent, {
+		{22/24, 19/24},
+		{2/24, 19/24},
+		{2/24, 5/24},
+		{10/24, 5/24},
+		{12/24, 8/24},
+		{22/24, 8/24},
+		{22/24, 19/24},
+	}, color)
+end
+
+-- file
+Icons["file"] = function(parent, color)
+	pt(parent, {
+		{13/24, 2/24},
+		{3/24, 2/24},
+		{3/24, 22/24},
+		{21/24, 22/24},
+		{21/24, 10/24},
+		{13/24, 2/24},
+		{13/24, 10/24},
+		{21/24, 10/24},
+	}, color)
+end
+
+-- file-text
+Icons["file-text"] = function(parent, color)
+	pt(parent, {
+		{13/24, 2/24},
+		{3/24, 2/24},
+		{3/24, 22/24},
+		{21/24, 22/24},
+		{21/24, 10/24},
+		{13/24, 2/24},
+		{13/24, 10/24},
+		{21/24, 10/24},
+	}, color)
+	ln(parent, 7/24, 13/24, 17/24, 13/24, color)
+	ln(parent, 7/24, 17/24, 17/24, 17/24, color)
+end
+
+-- log-out
+Icons["log-out"] = function(parent, color)
+	pt(parent, {
+		{9/24, 21/24}, {3/24, 21/24}, {3/24, 3/24}, {9/24, 3/24},
+	}, color)
+	ln(parent, 16/24, 17/24, 21/24, 12/24, color)
+	ln(parent, 21/24, 12/24, 16/24, 7/24, color)
+	ln(parent, 9/24, 12/24, 21/24, 12/24, color)
+end
+
+-- log-in
+Icons["log-in"] = function(parent, color)
+	pt(parent, {
+		{15/24, 3/24}, {21/24, 3/24}, {21/24, 21/24}, {15/24, 21/24},
+	}, color)
+	ln(parent, 8/24, 17/24, 3/24, 12/24, color)
+	ln(parent, 3/24, 12/24, 8/24, 7/24, color)
+	ln(parent, 3/24, 12/24, 15/24, 12/24, color)
+end
+
+-- zap (raio)
+Icons["zap"] = function(parent, color)
+	pt(parent, {
+		{13/24, 2/24},
+		{3/24, 14/24},
+		{12/24, 14/24},
+		{11/24, 22/24},
+		{21/24, 10/24},
+		{12/24, 10/24},
+		{13/24, 2/24},
+	}, color)
+end
+
+-- sun
+Icons["sun"] = function(parent, color)
+	cr(parent, 0.5, 0.5, 0.167, color)
+	for i = 0, 7 do
+		local a = math.rad(i * 45)
+		local x1 = 0.5 + math.cos(a) * 0.28
+		local y1 = 0.5 + math.sin(a) * 0.28
+		local x2 = 0.5 + math.cos(a) * 0.41
+		local y2 = 0.5 + math.sin(a) * 0.41
+		ln(parent, x1, y1, x2, y2, color)
+	end
+end
+
+-- moon
+Icons["moon"] = function(parent, color)
+	ar(parent, 14/24, 12/24, 9/24, 120, 300, color, 0.08, 10)
+	ln(parent, 14/24, 3/24, 14/24, 4/24, color)
+end
+
+-- cloud
+Icons["cloud"] = function(parent, color)
+	ar(parent, 12/24, 12/24, 6/24, 200, 340, color, 0.08, 8)
+	ar(parent, 8.5/24, 12/24, 3.5/24, 200, 270, color, 0.08, 4)
+	ln(parent, 5/24, 12/24, 19/24, 12/24, color)
+	ar(parent, 16/24, 10/24, 4/24, 270, 360, color, 0.08, 4)
+	ar(parent, 12/24, 8/24, 4/24, 0, 180, color, 0.08, 6)
+end
+
+-- clock
+Icons["clock"] = function(parent, color)
+	cr(parent, 0.5, 0.5, 0.41, color)
+	ln(parent, 12/24, 7/24, 12/24, 12/24, color)
+	ln(parent, 12/24, 12/24, 16/24, 14/24, color)
+end
+
+-- calendar
+Icons["calendar"] = function(parent, color)
+	rr(parent, 3/24, 4/24, 18/24, 18/24, color, 4)
+	ln(parent, 16/24, 2/24, 16/24, 6/24, color)
+	ln(parent, 8/24, 2/24, 8/24, 6/24, color)
+	ln(parent, 3/24, 10/24, 21/24, 10/24, color)
+end
+
+-- chart-bar (Lucide: bar-chart-2)
+Icons["bar-chart-2"] = function(parent, color)
+	ln(parent, 18/24, 20/24, 18/24, 10/24, color)
+	ln(parent, 12/24, 20/24, 12/24, 4/24, color)
+	ln(parent, 6/24, 20/24, 6/24, 14/24, color)
+end
+
+-- trending-up
+Icons["trending-up"] = function(parent, color)
+	pt(parent, {
+		{2/24, 18/24},
+		{8/24, 12/24},
+		{12/24, 16/24},
+		{22/24, 6/24},
+	}, color)
+	pt(parent, {
+		{17/24, 6/24}, {22/24, 6/24}, {22/24, 11/24},
+	}, color)
+end
+
+-- list
+Icons["list"] = function(parent, color)
+	ln(parent, 8/24, 6/24, 21/24, 6/24, color)
+	ln(parent, 8/24, 12/24, 21/24, 12/24, color)
+	ln(parent, 8/24, 18/24, 21/24, 18/24, color)
+	dot(parent, 3/24, 6/24, 0.05, color)
+	dot(parent, 3/24, 12/24, 0.05, color)
+	dot(parent, 3/24, 18/24, 0.05, color)
+end
+
+-- grid
+Icons["grid"] = function(parent, color)
+	rr(parent, 3/24, 3/24, 7/24, 7/24, color, 2)
+	rr(parent, 14/24, 3/24, 7/24, 7/24, color, 2)
+	rr(parent, 3/24, 14/24, 7/24, 7/24, color, 2)
+	rr(parent, 14/24, 14/24, 7/24, 7/24, color, 2)
+end
+
+-- layout
+Icons["layout"] = function(parent, color)
+	rr(parent, 3/24, 3/24, 18/24, 18/24, color, 4)
+	ln(parent, 3/24, 9/24, 21/24, 9/24, color)
+	ln(parent, 9/24, 9/24, 9/24, 21/24, color)
+end
+
+-- sidebar
+Icons["sidebar"] = function(parent, color)
+	rr(parent, 3/24, 3/24, 18/24, 18/24, color, 4)
+	ln(parent, 9/24, 3/24, 9/24, 21/24, color)
+end
+
+-- menu (hamburger)
+Icons["menu"] = function(parent, color)
+	ln(parent, 3/24, 6/24, 21/24, 6/24, color)
+	ln(parent, 3/24, 12/24, 21/24, 12/24, color)
+	ln(parent, 3/24, 18/24, 21/24, 18/24, color)
+end
+
+-- more-horizontal (três pontos)
+Icons["more-horizontal"] = function(parent, color)
+	dot(parent, 12/24, 12/24, 0.05, color)
+	dot(parent, 5/24, 12/24, 0.05, color)
+	dot(parent, 19/24, 12/24, 0.05, color)
+end
+
+-- more-vertical
+Icons["more-vertical"] = function(parent, color)
+	dot(parent, 12/24, 12/24, 0.05, color)
+	dot(parent, 12/24, 5/24, 0.05, color)
+	dot(parent, 12/24, 19/24, 0.05, color)
+end
+
+-- plus
+Icons["plus"] = function(parent, color)
+	ln(parent, 12/24, 4/24, 12/24, 20/24, color)
+	ln(parent, 4/24, 12/24, 20/24, 12/24, color)
+end
+
+-- minus
+Icons["minus"] = function(parent, color)
+	ln(parent, 4/24, 12/24, 20/24, 12/24, color)
+end
+
+-- chevron-right
+Icons["chevron-right"] = function(parent, color)
+	pt(parent, {
+		{9/24, 18/24},
+		{15/24, 12/24},
+		{9/24, 6/24},
+	}, color)
+end
+
+-- chevron-left
+Icons["chevron-left"] = function(parent, color)
+	pt(parent, {
+		{15/24, 18/24},
+		{9/24, 12/24},
+		{15/24, 6/24},
+	}, color)
+end
+
+-- chevron-down
+Icons["chevron-down"] = function(parent, color)
+	pt(parent, {
+		{6/24, 9/24},
+		{12/24, 15/24},
+		{18/24, 9/24},
+	}, color)
+end
+
+-- chevron-up
+Icons["chevron-up"] = function(parent, color)
+	pt(parent, {
+		{6/24, 15/24},
+		{12/24, 9/24},
+		{18/24, 15/24},
+	}, color)
+end
+
+-- arrow-right
+Icons["arrow-right"] = function(parent, color)
+	ln(parent, 4/24, 12/24, 20/24, 12/24, color)
+	pt(parent, {
+		{14/24, 6/24}, {20/24, 12/24}, {14/24, 18/24},
+	}, color)
+end
+
+-- arrow-left
+Icons["arrow-left"] = function(parent, color)
+	ln(parent, 20/24, 12/24, 4/24, 12/24, color)
+	pt(parent, {
+		{10/24, 18/24}, {4/24, 12/24}, {10/24, 6/24},
+	}, color)
+end
+
+-- arrow-up
+Icons["arrow-up"] = function(parent, color)
+	ln(parent, 12/24, 20/24, 12/24, 4/24, color)
+	pt(parent, {
+		{6/24, 10/24}, {12/24, 4/24}, {18/24, 10/24},
+	}, color)
+end
+
+-- arrow-down
+Icons["arrow-down"] = function(parent, color)
+	ln(parent, 12/24, 4/24, 12/24, 20/24, color)
+	pt(parent, {
+		{6/24, 14/24}, {12/24, 20/24}, {18/24, 14/24},
+	}, color)
+end
+
+-- filter
+Icons["filter"] = function(parent, color)
+	pt(parent, {
+		{22/24, 3/24}, {2/24, 3/24}, {10/24, 12.46/24}, {10/24, 19/24},
+		{14/24, 21/24}, {14/24, 12.46/24}, {22/24, 3/24},
+	}, color)
+end
+
+-- sort-asc
+Icons["sort-asc"] = function(parent, color)
+	ln(parent, 3/24, 8/24, 13/24, 8/24, color)
+	ln(parent, 3/24, 14/24, 9/24, 14/24, color)
+	ln(parent, 3/24, 20/24, 5/24, 20/24, color)
+	pt(parent, {
+		{18/24, 20/24}, {18/24, 4/24},
+	}, color)
+	pt(parent, {
+		{14/24, 8/24}, {18/24, 4/24}, {22/24, 8/24},
+	}, color)
+end
+
+-- heart (Lucide)
+Icons["heart"] = function(parent, color)
+	ar(parent, 8.5/24, 9/24, 4.5/24, 180, 360, color, 0.08, 8)
+	ar(parent, 15.5/24, 9/24, 4.5/24, 180, 360, color, 0.08, 8)
+	ln(parent, 4/24, 13.5/24, 12/24, 22/24, color)
+	ln(parent, 12/24, 22/24, 20/24, 13.5/24, color)
+	ln(parent, 4/24, 9/24, 4/24, 13.5/24, color)
+	ln(parent, 20/24, 9/24, 20/24, 13.5/24, color)
+end
+
+-- thumbs-up
+Icons["thumbs-up"] = function(parent, color)
+	pt(parent, {
+		{7/24, 22/24}, {7/24, 13/24},
+	}, color)
+	pt(parent, {
+		{7/24, 13/24}, {4/24, 13/24}, {4/24, 22/24}, {7/24, 22/24},
+	}, color)
+	pt(parent, {
+		{7/24, 13/24},
+		{10.5/24, 2/24},
+		{14/24, 2/24},
+		{14/24, 6/24},
+		{20/24, 6/24},
+		{20/24, 13/24},
+		{7/24, 13/24},
+	}, color)
+end
+
+-- ── sistema de paleta de ícones Fluent (mantido para compatibilidade)
+-- Esses são aliases para os equivalentes Lucide
+Icons["FluentHome"] = Icons["house"]
+Icons["FluentSettings"] = Icons["settings"]
+Icons["FluentPalette"] = Icons["palette"]
+Icons["FluentVolume"] = Icons["volume-2"]
+Icons["FluentInfo"] = Icons["info"]
+Icons["FluentBell"] = Icons["bell"]
+Icons["FluentShield"] = Icons["shield"]
+Icons["FluentUser"] = Icons["user"]
+
+-- ── aliases legados (nomes antigos da v1 → novos nomes Lucide)
+Icons["House"]    = Icons["house"]
+Icons["Settings"] = Icons["settings"]
+Icons["Palette"]  = Icons["palette"]
+Icons["Sliders"]  = Icons["sliders-horizontal"]
+Icons["Volume"]   = Icons["volume-2"]
+Icons["Info"]     = Icons["info"]
+Icons["Star"]     = Icons["star"]
+Icons["Shield"]   = Icons["shield"]
+Icons["Monitor"]  = Icons["monitor"]
+Icons["User"]     = Icons["user"]
+Icons["Bell"]     = Icons["bell"]
+
+local function drawIcon(container, name, color)
+	local fn = Icons[name]
+	if fn then
+		fn(container, color)
+	end
+end
+
+-- ══════════════════════════════════════════════════════════
 --   TEMAS
---   Cada tema é uma tabela completa de cores. Pra criar um
---   tema novo, basta copiar um existente e trocar as cores.
---   "Glass" controla a transparência de cada camada (igual
---   em todos os temas, mas pode ser sobrescrito por tema se
---   quiser um vidro mais ou menos opaco em algum deles).
 -- ══════════════════════════════════════════════════════════
 
 local Themes = {}
@@ -191,439 +1402,22 @@ Themes.Rose = {
 	Glass = { Window = 0.35, TopBar = 0.30, Sidebar = 0.32, Card = 0.25 },
 }
 
--- ══════════════════════════════════════════════════════════
---   ÍCONES ESTILO LUCIDE
---   Lucide usa traços finos (stroke, sem preenchimento),
---   pontas redondas e viewBox 24x24 com stroke-width 2.
---   Reproduzimos isso aqui com "linhas" (Frames bem finos
---   com UICorner total, ou seja, formato cápsula) — a mesma
---   técnica de ponta arredondada do Lucide, só que feita com
---   Frames em vez de SVG <path>, já que o Roblox não
---   renderiza SVG nativamente.
---
---   Cada ícone recebe um container quadrado (em Scale 0–1)
---   e uma cor, e desenha os traços dentro dele.
--- ══════════════════════════════════════════════════════════
-
-local Icons = {}
-
--- desenha uma "linha" fina com ponta redonda entre dois pontos relativos (0–1)
---
--- IMPORTANTE: no Roblox, a propriedade Rotation de um Frame SEMPRE
--- gira em torno do CENTRO do frame, mesmo que o AnchorPoint seja
--- outro (ex: a ponta esquerda). Isso é uma particularidade conhecida
--- do motor (rotação ignora AnchorPoint). Por isso usamos AnchorPoint
--- (0.5, 0.5) e calculamos o PONTO MÉDIO entre (x1,y1) e (x2,y2) como
--- posição central do frame — assim a rotação em torno do centro
--- coincide exatamente com o segmento que queremos desenhar.
---
--- O corner usa UDim.new(1, 0) (Scale = 1) em vez de um valor fixo em
--- pixels: isso garante uma "cápsula" perfeita (raio = metade da
--- espessura) em qualquer tamanho de ícone, igual ao stroke-linecap
--- "round" do Lucide — um corner fixo em offset deformava a ponta em
--- ícones pequenos.
-local function line(parent, x1, y1, x2, y2, color, thickness)
-	thickness = thickness or 0.07
-	local dx, dy = x2 - x1, y2 - y1
-	local length = math.sqrt(dx * dx + dy * dy)
-	local angle = math.atan2(dy, dx)
-	local midX, midY = (x1 + x2) / 2, (y1 + y2) / 2
-
-	local seg = create("Frame", {
-		AnchorPoint = Vector2.new(0.5, 0.5),
-		BackgroundColor3 = color,
-		BorderSizePixel = 0,
-		Rotation = math.deg(angle),
-		Parent = parent,
-	})
-	local segCorner = Instance.new("UICorner")
-	segCorner.CornerRadius = UDim.new(1, 0)
-	segCorner.Parent = seg
-	local function layout()
-		local absSize = parent.AbsoluteSize
-		local base = math.min(absSize.X, absSize.Y)
-		if base <= 0 then return end
-		seg.Size = UDim2.new(0, length * base, 0, thickness * base)
-		seg.Position = UDim2.new(midX, 0, midY, 0)
-	end
-	layout()
-	parent:GetPropertyChangedSignal("AbsoluteSize"):Connect(layout)
-	return seg
-end
-
--- desenha um arco suave (curva) entre dois ângulos, em torno de um
--- centro relativo (cx, cy) e raio "r" — usado pra suavizar ícones
--- que no Lucide original usam curvas (Volume, Bell) em vez de só
--- segmentos retos. Internamente é feito com vários segmentos curtos
--- de "line()" interpolados, mas a olho nu aparenta uma curva contínua.
-local function arc(parent, cx, cy, r, startAngle, endAngle, color, thickness, segments)
-	segments = segments or 8
-	local prevX, prevY = nil, nil
-	for i = 0, segments do
-		local t = i / segments
-		local a = math.rad(startAngle + (endAngle - startAngle) * t)
-		local px = cx + math.cos(a) * r
-		local py = cy + math.sin(a) * r
-		if prevX then
-			line(parent, prevX, prevY, px, py, color, thickness)
-		end
-		prevX, prevY = px, py
-	end
-end
-
--- desenha um círculo (apenas contorno, igual ao stroke do Lucide)
-local function ring(parent, cx, cy, r, color, thickness)
-	thickness = thickness or 0.07
-	local c = create("Frame", {
-		AnchorPoint = Vector2.new(0.5, 0.5),
-		BackgroundTransparency = 1,
-		Parent = parent,
-	})
-	corner(c, 100)
-	local ringStroke = stroke(c, color, 2, 0)
-	local function layout()
-		local absSize = parent.AbsoluteSize
-		local base = math.min(absSize.X, absSize.Y)
-		if base <= 0 then return end
-		c.Position = UDim2.new(cx, 0, cy, 0)
-		c.Size = UDim2.new(0, r * 2 * base, 0, r * 2 * base)
-		ringStroke.Thickness = math.max(1, thickness * base)
-	end
-	layout()
-	parent:GetPropertyChangedSignal("AbsoluteSize"):Connect(layout)
-	c.ZIndex = 1
-	return c
-end
-
--- desenha um retângulo arredondado (apenas contorno)
-local function roundRect(parent, x, y, w, h, color, radius)
-	local r = create("Frame", {
-		BackgroundTransparency = 1,
-		Position = UDim2.new(x, 0, y, 0),
-		Size = UDim2.new(w, 0, h, 0),
-		Parent = parent,
-	})
-	corner(r, radius or 4)
-	local rectStroke = stroke(r, color, 2, 0)
-	local function layout()
-		local absSize = parent.AbsoluteSize
-		local base = math.min(absSize.X, absSize.Y)
-		if base <= 0 then return end
-		rectStroke.Thickness = math.max(1, 0.07 * base)
-	end
-	layout()
-	parent:GetPropertyChangedSignal("AbsoluteSize"):Connect(layout)
-	return r
-end
-
--- house (Principal)
-Icons.House = function(parent, color)
-	line(parent, 0.5, 0.08, 0.92, 0.46, color)
-	line(parent, 0.5, 0.08, 0.08, 0.46, color)
-	line(parent, 0.16, 0.4, 0.16, 0.92, color)
-	line(parent, 0.84, 0.4, 0.84, 0.92, color)
-	line(parent, 0.16, 0.92, 0.84, 0.92, color)
-	line(parent, 0.4, 0.92, 0.4, 0.62, color)
-	line(parent, 0.4, 0.62, 0.6, 0.62, color)
-	line(parent, 0.6, 0.62, 0.6, 0.92, color)
-end
-
--- palette (Visual)
-Icons.Palette = function(parent, color)
-	-- corpo externo da paleta (circulo grande levemente assimétrico, aproximado por anel)
-	ring(parent, 0.48, 0.5, 0.42, color)
-	-- pingos de tinta
-	local dots = { {0.34, 0.32, 0.07}, {0.56, 0.28, 0.07}, {0.7, 0.46, 0.07}, {0.36, 0.62, 0.07} }
-	for _, d in ipairs(dots) do
-		local dot = create("Frame", {
-			AnchorPoint = Vector2.new(0.5, 0.5),
-			BackgroundColor3 = color,
-			BorderSizePixel = 0,
-			Parent = parent,
-		})
-		corner(dot, 100)
-		local function layout()
-			local absSize = parent.AbsoluteSize
-			local base = math.min(absSize.X, absSize.Y)
-			if base <= 0 then return end
-			dot.Position = UDim2.new(d[1], 0, d[2], 0)
-			dot.Size = UDim2.new(0, d[3] * 2 * base, 0, d[3] * 2 * base)
-		end
-		layout()
-		parent:GetPropertyChangedSignal("AbsoluteSize"):Connect(layout)
-	end
-end
-
--- settings / gear (Config)
-Icons.Settings = function(parent, color)
-	ring(parent, 0.5, 0.5, 0.14, color)
-	local teeth = 8
-	for i = 1, teeth do
-		local angle = (i - 1) * (360 / teeth)
-		local rad = math.rad(angle)
-		local x1 = 0.5 + math.cos(rad) * 0.3
-		local y1 = 0.5 + math.sin(rad) * 0.3
-		local x2 = 0.5 + math.cos(rad) * 0.42
-		local y2 = 0.5 + math.sin(rad) * 0.42
-		line(parent, x1, y1, x2, y2, color, 0.1)
-	end
-end
-
--- sliders-horizontal (uso geral)
-Icons.Sliders = function(parent, color)
-	local rows = { 0.26, 0.5, 0.74 }
-	local knobX = { 0.66, 0.34, 0.56 }
-	for i, y in ipairs(rows) do
-		line(parent, 0.08, y, 0.92, y, color, 0.07)
-		local knob = create("Frame", {
-			AnchorPoint = Vector2.new(0.5, 0.5),
-			BackgroundColor3 = color,
-			BorderSizePixel = 0,
-			Parent = parent,
-		})
-		corner(knob, 100)
-		local function layout()
-			local absSize = parent.AbsoluteSize
-			local base = math.min(absSize.X, absSize.Y)
-			if base <= 0 then return end
-			knob.Position = UDim2.new(knobX[i], 0, y, 0)
-			knob.Size = UDim2.new(0, 0.1 * base, 0, 0.1 * base)
-		end
-		layout()
-		parent:GetPropertyChangedSignal("AbsoluteSize"):Connect(layout)
-	end
-end
-
--- volume-2 / speaker (Áudio)
-Icons.Volume = function(parent, color)
-	-- corpo do alto-falante (mesma silhueta do "volume-2" do Lucide)
-	line(parent, 0.06, 0.4, 0.28, 0.4, color)
-	line(parent, 0.06, 0.4, 0.06, 0.6, color)
-	line(parent, 0.06, 0.6, 0.28, 0.6, color)
-	line(parent, 0.28, 0.4, 0.46, 0.22, color)
-	line(parent, 0.28, 0.6, 0.46, 0.78, color)
-	line(parent, 0.46, 0.22, 0.46, 0.78, color)
-	-- ondas sonoras como arcos suaves (em vez de segmentos retos),
-	-- mais fiel ao traço curvo do ícone original do Lucide
-	arc(parent, 0.42, 0.5, 0.18, -45, 45, color, 0.07, 5)
-	arc(parent, 0.42, 0.5, 0.32, -55, 55, color, 0.07, 6)
-end
-
--- info (Sobre)
-Icons.Info = function(parent, color)
-	ring(parent, 0.5, 0.5, 0.4, color)
-	local dot = create("Frame", {
-		AnchorPoint = Vector2.new(0.5, 0.5),
-		BackgroundColor3 = color,
-		BorderSizePixel = 0,
-		Parent = parent,
-	})
-	corner(dot, 100)
-	local function dotLayout()
-		local absSize = parent.AbsoluteSize
-		local base = math.min(absSize.X, absSize.Y)
-		if base <= 0 then return end
-		dot.Position = UDim2.new(0.5, 0, 0.28, 0)
-		dot.Size = UDim2.new(0, 0.07 * base, 0, 0.07 * base)
-	end
-	dotLayout()
-	parent:GetPropertyChangedSignal("AbsoluteSize"):Connect(dotLayout)
-	line(parent, 0.5, 0.46, 0.5, 0.74, color)
-end
-
--- star (uso geral / favoritos)
-Icons.Star = function(parent, color)
-	local points = {}
-	local cx, cy = 0.5, 0.52
-	local outer, inner = 0.42, 0.18
-	for i = 0, 9 do
-		local angle = math.rad(-90 + i * 36)
-		local r = (i % 2 == 0) and outer or inner
-		table.insert(points, { cx + math.cos(angle) * r, cy + math.sin(angle) * r })
-	end
-	for i = 1, #points do
-		local p1 = points[i]
-		local p2 = points[(i % #points) + 1]
-		line(parent, p1[1], p1[2], p2[1], p2[2], color, 0.07)
-	end
-end
-
--- shield (uso geral / segurança)
-Icons.Shield = function(parent, color)
-	line(parent, 0.5, 0.06, 0.86, 0.22, color)
-	line(parent, 0.86, 0.22, 0.86, 0.5, color)
-	line(parent, 0.86, 0.5, 0.5, 0.92, color)
-	line(parent, 0.5, 0.92, 0.14, 0.5, color)
-	line(parent, 0.14, 0.5, 0.14, 0.22, color)
-	line(parent, 0.14, 0.22, 0.5, 0.06, color)
-end
-
--- monitor (gráficos / display)
-Icons.Monitor = function(parent, color)
-	roundRect(parent, 0.08, 0.14, 0.84, 0.56, color, 6)
-	line(parent, 0.5, 0.7, 0.5, 0.86, color)
-	line(parent, 0.3, 0.86, 0.7, 0.86, color)
-end
-
--- user (perfil)
-Icons.User = function(parent, color)
-	ring(parent, 0.5, 0.32, 0.16, color)
-	line(parent, 0.18, 0.88, 0.22, 0.68, color)
-	line(parent, 0.22, 0.68, 0.78, 0.68, color)
-	line(parent, 0.78, 0.68, 0.82, 0.88, color)
-	line(parent, 0.18, 0.88, 0.82, 0.88, color)
-end
-
--- bell (notificações)
-Icons.Bell = function(parent, color)
-	-- corpo do sino com ombros curvos (igual ao "bell" do Lucide)
-	arc(parent, 0.5, 0.42, 0.28, 200, 340, color, 0.07, 6)
-	line(parent, 0.22, 0.58, 0.22, 0.42, color)
-	line(parent, 0.78, 0.58, 0.78, 0.42, color)
-	line(parent, 0.2, 0.6, 0.8, 0.6, color)
-	-- badulaque (clapper)
-	line(parent, 0.44, 0.7, 0.56, 0.7, color, 0.07)
-end
-
--- ══════════════════════════════════════════════════════════
---   ÍCONES ESTILO FLUENT UI (Microsoft)
---   Mesma técnica vetorial dos ícones Lucide acima (sem
---   nenhum asset externo ou loadstring de terceiros — só
---   Frames desenhados na hora). A diferença é só de ESTILO:
---   a Fluent UI "regular" tende a ter formas mais geométricas
---   e cantos mais retos que o Lucide (que é mais orgânico e
---   com cantos bem arredondados). Use o nome com prefixo
---   "Fluent" em CreateTab, ex: CreateTab("Principal", "FluentHome")
--- ══════════════════════════════════════════════════════════
-
-Icons.FluentHome = function(parent, color)
-	-- telhado triangular mais reto/geométrico (estilo Fluent)
-	line(parent, 0.5, 0.08, 0.88, 0.4, color)
-	line(parent, 0.5, 0.08, 0.12, 0.4, color)
-	roundRect(parent, 0.2, 0.38, 0.6, 0.5, color, 3)
-	-- porta retangular reta (sem arredondamento, característico da Fluent)
-	line(parent, 0.42, 0.88, 0.42, 0.62, color)
-	line(parent, 0.42, 0.62, 0.58, 0.62, color)
-	line(parent, 0.58, 0.62, 0.58, 0.88, color)
-end
-
-Icons.FluentSettings = function(parent, color)
-	-- engrenagem com dentes retangulares retos (Fluent usa menos
-	-- curvas que o Lucide nos dentes da engrenagem)
-	ring(parent, 0.5, 0.5, 0.16, color)
-	local teeth = 8
-	for i = 1, teeth do
-		local angle = (i - 1) * (360 / teeth)
-		local rad = math.rad(angle)
-		local x1 = 0.5 + math.cos(rad) * 0.32
-		local y1 = 0.5 + math.sin(rad) * 0.32
-		local x2 = 0.5 + math.cos(rad) * 0.44
-		local y2 = 0.5 + math.sin(rad) * 0.44
-		line(parent, x1, y1, x2, y2, color, 0.13)
-	end
-end
-
-Icons.FluentPalette = function(parent, color)
-	-- formato mais "quadrado/geométrico" que a paleta orgânica do Lucide
-	roundRect(parent, 0.14, 0.14, 0.72, 0.72, color, 14)
-	local dots = { {0.34, 0.34, 0.07}, {0.66, 0.34, 0.07}, {0.34, 0.66, 0.07}, {0.66, 0.66, 0.07} }
-	for _, d in ipairs(dots) do
-		local dot = create("Frame", {
-			AnchorPoint = Vector2.new(0.5, 0.5),
-			BackgroundColor3 = color,
-			BorderSizePixel = 0,
-			Parent = parent,
-		})
-		corner(dot, 100)
-		local function layout()
-			local absSize = parent.AbsoluteSize
-			local base = math.min(absSize.X, absSize.Y)
-			if base <= 0 then return end
-			dot.Position = UDim2.new(d[1], 0, d[2], 0)
-			dot.Size = UDim2.new(0, d[3] * 2 * base, 0, d[3] * 2 * base)
-		end
-		layout()
-		parent:GetPropertyChangedSignal("AbsoluteSize"):Connect(layout)
-	end
-end
-
-Icons.FluentVolume = function(parent, color)
-	roundRect(parent, 0.06, 0.4, 0.22, 0.2, color, 2)
-	line(parent, 0.28, 0.4, 0.46, 0.22, color)
-	line(parent, 0.28, 0.6, 0.46, 0.78, color)
-	line(parent, 0.46, 0.22, 0.46, 0.78, color)
-	-- ondas retas e curtas, mais "técnicas" que orgânicas
-	line(parent, 0.6, 0.42, 0.68, 0.42, color, 0.07)
-	line(parent, 0.6, 0.58, 0.68, 0.58, color, 0.07)
-	line(parent, 0.76, 0.32, 0.84, 0.32, color, 0.07)
-	line(parent, 0.76, 0.68, 0.84, 0.68, color, 0.07)
-end
-
-Icons.FluentInfo = function(parent, color)
-	roundRect(parent, 0.1, 0.1, 0.8, 0.8, color, 100)
-	local dot = create("Frame", {
-		AnchorPoint = Vector2.new(0.5, 0.5),
-		BackgroundColor3 = color,
-		BorderSizePixel = 0,
-		Parent = parent,
-	})
-	corner(dot, 100)
-	local function dotLayout()
-		local absSize = parent.AbsoluteSize
-		local base = math.min(absSize.X, absSize.Y)
-		if base <= 0 then return end
-		dot.Position = UDim2.new(0.5, 0, 0.3, 0)
-		dot.Size = UDim2.new(0, 0.08 * base, 0, 0.08 * base)
-	end
-	dotLayout()
-	parent:GetPropertyChangedSignal("AbsoluteSize"):Connect(dotLayout)
-	line(parent, 0.5, 0.46, 0.5, 0.72, color, 0.1)
-end
-
-Icons.FluentBell = function(parent, color)
-	-- sino com ombros retos (sem o arco suave da versão Lucide)
-	line(parent, 0.5, 0.12, 0.5, 0.2, color)
-	line(parent, 0.5, 0.2, 0.28, 0.36, color)
-	line(parent, 0.28, 0.36, 0.22, 0.6, color)
-	line(parent, 0.5, 0.2, 0.72, 0.36, color)
-	line(parent, 0.72, 0.36, 0.78, 0.6, color)
-	line(parent, 0.2, 0.6, 0.8, 0.6, color)
-	line(parent, 0.44, 0.7, 0.56, 0.7, color, 0.07)
-end
-
-Icons.FluentShield = function(parent, color)
-	-- escudo com topo reto (mais geométrico que o do Lucide, que é mais pontudo)
-	line(parent, 0.22, 0.16, 0.78, 0.16, color)
-	line(parent, 0.22, 0.16, 0.18, 0.46, color)
-	line(parent, 0.78, 0.16, 0.82, 0.46, color)
-	line(parent, 0.18, 0.46, 0.5, 0.88, color)
-	line(parent, 0.82, 0.46, 0.5, 0.88, color)
-end
-
-Icons.FluentUser = function(parent, color)
-	ring(parent, 0.5, 0.3, 0.15, color)
-	roundRect(parent, 0.2, 0.56, 0.6, 0.32, color, 12)
-end
-
-local function drawIcon(container, name, color)
-	local fn = Icons[name]
-	if fn then
-		fn(container, color)
-	end
-end
-
 MacOSLib.Themes = Themes
 MacOSLib.Icons = Icons
+
+-- ══════════════════════════════════════════════════════════
+--   CreateWindow
+-- ══════════════════════════════════════════════════════════
 
 function MacOSLib:CreateWindow(config)
 	config = config or {}
 	local title       = config.Title     or "MacOS UI"
-	local subtitle     = config.Subtitle  or "v1.0"
-	local width        = config.Width     or 520
-	local height       = config.Height    or 360
-	local key          = config.ToggleKey or Enum.KeyCode.RightControl
-	local themeName    = config.Theme     or "Light"
-	local Theme        = Themes[themeName] or Themes.Light
+	local subtitle    = config.Subtitle  or "v1.0"
+	local width       = config.Width     or 520
+	local height      = config.Height    or 360
+	local key         = config.ToggleKey or Enum.KeyCode.RightControl
+	local themeName   = config.Theme     or "Light"
+	local Theme       = Themes[themeName] or Themes.Light
 
 	local gui = create("ScreenGui", {
 		Name = "MacOSLib",
@@ -653,21 +1447,11 @@ function MacOSLib:CreateWindow(config)
 	})
 	corner(shadow, 16)
 
-	-- restoreSize guarda o tamanho/posição "normal" da janela pra
-	-- restaurar quando o usuário sair do modo maximizado.
 	local restoreSize = UDim2.new(0, width, 0, height)
 	local restorePos = UDim2.new(0.5, -width / 2, 0.5, -height / 2)
 	local isMaximized = false
 	local isMinimized = false
 
-	-- IMPORTANTE: usamos CanvasGroup em vez de Frame aqui.
-	-- ClipsDescendants normal SÓ recorta no formato retangular do
-	-- frame, mesmo com UICorner aplicado (isso é uma limitação
-	-- conhecida e documentada do Roblox: UICorner é puramente visual
-	-- e não redefine a área de clipe). CanvasGroup é o único jeito
-	-- confiável de fazer o corte respeitar o canto arredondado de
-	-- verdade — é ele que resolve o bug dos "cantos retos" no topo
-	-- e na lateral esquerda que apareciam antes.
 	local window = create("CanvasGroup", {
 		Name = "Window",
 		Size = restoreSize,
@@ -682,9 +1466,6 @@ function MacOSLib:CreateWindow(config)
 	corner(window, 12)
 	stroke(window, Theme.Divider, 1.5, 0.15)
 
-	-- FIX: topbar não tem mais o "topbarFix" duplicado (era ele que
-	-- criava a linha visível no meio do título). Um único UICorner
-	-- com Z-index correto já resolve o arredondamento do topo.
 	local topbar = create("Frame", {
 		Name = "TopBar",
 		Size = UDim2.new(1, 0, 0, 44),
@@ -704,17 +1485,6 @@ function MacOSLib:CreateWindow(config)
 		Parent = topbar,
 	})
 
-	-- FIX: a janela inteira (window) já tem ClipsDescendants = true e
-	-- UICorner com raio 12. Antes a topbar tinha seu próprio UICorner
-	-- de raio 12 também, mas como ela é maior que o raio nas bordas
-	-- inferiores, o corner ali não fazia diferença — o bug real do
-	-- "canto reto" estava no ContentHolder (ver mais abaixo), que não
-	-- herdava nenhum corner e vazava por fora do clip da janela em
-	-- certas resoluções. Resolvido fazendo o ContentHolder ocupar
-	-- exatamente a área restante sem nenhuma sobreposição de pixel
-	-- com a borda da window, então o ClipsDescendants da própria
-	-- window cuida do arredondamento.
-
 	local trafficColors = {
 		Color3.fromRGB(255, 95, 87),
 		Color3.fromRGB(255, 189, 46),
@@ -722,7 +1492,7 @@ function MacOSLib:CreateWindow(config)
 	}
 	local trafficX = 14
 	for i = 1, 3 do
-		local dot = create("Frame", {
+		local dot2 = create("Frame", {
 			Size = UDim2.new(0, 13, 0, 13),
 			Position = UDim2.new(0, trafficX, 0.5, -6),
 			BackgroundColor3 = trafficColors[i],
@@ -730,18 +1500,17 @@ function MacOSLib:CreateWindow(config)
 			ZIndex = 3,
 			Parent = topbar,
 		})
-		corner(dot, 50)
+		corner(dot2, 50)
 		trafficX = trafficX + 20
 
 		local btn = create("TextButton", {
 			Size = UDim2.new(1, 0, 1, 0),
 			BackgroundTransparency = 1,
 			Text = "",
-			Parent = dot,
+			Parent = dot2,
 		})
 
 		if i == 1 then
-			-- fechar
 			btn.MouseButton1Click:Connect(function()
 				tween(shadow, { BackgroundTransparency = 1 }, 0.2)
 				tween(window, { BackgroundTransparency = 1, Size = UDim2.new(0, width, 0, 0) }, 0.2)
@@ -750,20 +1519,17 @@ function MacOSLib:CreateWindow(config)
 				end)
 			end)
 		elseif i == 2 then
-			-- minimizar: encolhe a janela até só sobrar a topbar
 			btn.MouseButton1Click:Connect(function()
 				isMinimized = not isMinimized
 				if isMinimized then
 					tween(window, { Size = UDim2.new(window.Size.X.Scale, window.Size.X.Offset, 0, 44) }, 0.25)
 					tween(shadow, { Size = UDim2.new(0, window.Size.X.Offset + 16, 0, 60) }, 0.25)
 				else
-					local target = isMaximized and restoreSize or restoreSize
 					tween(window, { Size = restoreSize }, 0.25)
 					tween(shadow, { Size = UDim2.new(0, restoreSize.X.Offset + 16, 0, restoreSize.Y.Offset + 16) }, 0.25)
 				end
 			end)
 		elseif i == 3 then
-			-- maximizar: ocupa quase toda a tela, alterna de volta ao tamanho original
 			btn.MouseButton1Click:Connect(function()
 				isMaximized = not isMaximized
 				if isMaximized then
@@ -859,10 +1625,6 @@ function MacOSLib:CreateWindow(config)
 	listlayout(tabList, 2)
 	padding(tabList, 0, 8, 8, 0)
 
-	-- FIX: ContentHolder agora fica estritamente dentro da área da
-	-- window (sem encostar 1px nas bordas externas), e a window é
-	-- quem corta (ClipsDescendants) qualquer coisa que vaze. Isso
-	-- elimina o "canto reto" que aparecia no inferior direito.
 	local contentHolder = create("Frame", {
 		Name = "ContentHolder",
 		Size = UDim2.new(1, -130, 1, -44),
@@ -884,20 +1646,13 @@ function MacOSLib:CreateWindow(config)
 	Window._activeTab = nil
 	Window._theme = Theme
 	Window._themeName = themeName
-	Window._openDropdownClosers = {} -- registradas por AddDropdown, chamadas ao trocar de tab/tema
+	Window._openDropdownClosers = {}
 
 	function Window:_closeAllDropdowns()
 		for _, closeFn in ipairs(Window._openDropdownClosers) do
 			closeFn()
 		end
 	end
-
-	-- ── Sistema de troca de tema em tempo real ──────────────
-	-- Cada widget criado (botão, slider, dropdown, etc.) registra
-	-- sua própria função de repaint em tab._widgets. Quando o tema
-	-- muda, percorremos todas as tabs já criadas e chamamos essas
-	-- funções, que atualizam cor/transparência sem precisar recriar
-	-- nenhuma instância.
 
 	function Window:SetTheme(newThemeName)
 		local NewTheme = Themes[newThemeName]
@@ -918,7 +1673,6 @@ function MacOSLib:CreateWindow(config)
 			tween(windowStroke, { Color = NewTheme.Divider }, 0.25)
 		end
 
-		-- repinta todas as tabs, páginas e widgets já criados
 		for _, t in pairs(Window._tabs) do
 			t:_repaint(NewTheme)
 		end
@@ -941,9 +1695,8 @@ function MacOSLib:CreateWindow(config)
 					if child:IsA("Frame") and child.BackgroundTransparency == 0 then
 						child.BackgroundColor3 = targetColor
 					end
-					local st = child:IsA("UIStroke") and child or nil
-					if st then
-						st.Color = targetColor
+					if child:IsA("UIStroke") then
+						child.Color = targetColor
 					end
 				end
 			end
@@ -965,7 +1718,7 @@ function MacOSLib:CreateWindow(config)
 		corner(notif, 12)
 		stroke(notif, T.Divider, 1, 0.3)
 
-		local ntitleLabel = create("TextLabel", {
+		create("TextLabel", {
 			Size = UDim2.new(1, -16, 0, 22),
 			Position = UDim2.new(0, 14, 0, 10),
 			BackgroundTransparency = 1,
@@ -977,7 +1730,7 @@ function MacOSLib:CreateWindow(config)
 			ZIndex = 50,
 			Parent = notif,
 		})
-		local nmsg = create("TextLabel", {
+		create("TextLabel", {
 			Size = UDim2.new(1, -16, 0, 18),
 			Position = UDim2.new(0, 14, 0, 32),
 			BackgroundTransparency = 1,
@@ -1008,14 +1761,20 @@ function MacOSLib:CreateWindow(config)
 		end)
 	end
 
-	-- ── CreateTab ──────────────────────────────────────────
-	-- "icon" é o NOME de um ícone Lucide-style registrado em
-	-- Icons (ex: "House", "Settings", "Palette", "Sliders",
-	-- "Volume", "Info", "Star", "Shield", "Monitor", "User",
-	-- "Bell"). Se omitido ou inválido, a tab não mostra ícone.
+	-- ══════════════════════════════════════════════════════
+	-- CreateTab
+	-- "icon" agora aceita nomes no padrão Lucide (kebab-case),
+	-- ex: "house", "settings", "palette", "volume-2", "info",
+	-- "bell", "star", "shield", "monitor", "user",
+	-- "sliders-horizontal", "search", "eye", "lock", etc.
+	--
+	-- Os nomes legados da v1 também continuam funcionando:
+	-- "House", "Settings", "Palette", "Volume", "Info",
+	-- "Bell", "Star", "Shield", "Monitor", "User", "Sliders"
+	-- ══════════════════════════════════════════════════════
 	function Window:CreateTab(name, icon)
 		local tab = {}
-		tab._widgets = {} -- guarda widgets pra repaint de tema
+		tab._widgets = {}
 
 		local btn = create("TextButton", {
 			Name = name .. "_Tab",
@@ -1076,7 +1835,6 @@ function MacOSLib:CreateWindow(config)
 		tab._iconHolder = iconHolder
 		tab._iconName = icon
 
-		-- repinta a tab e todos os widgets dela quando o tema muda
 		function tab:_repaint(NewTheme)
 			local isActive = (Window._activeTab == tab)
 			btn.BackgroundColor3 = isActive and NewTheme.TabActive or NewTheme.TabInactive
@@ -1110,6 +1868,8 @@ function MacOSLib:CreateWindow(config)
 		if #Window._tabs == 1 then
 			Window:_setActive(tab)
 		end
+
+		-- ── Widgets ──────────────────────────────────────
 
 		function tab:AddSection(text)
 			local s = create("TextLabel", {
@@ -1154,15 +1914,15 @@ function MacOSLib:CreateWindow(config)
 				Parent = row,
 			})
 
-			-- chevron vetorial (estilo Lucide chevron-right) em vez de ">"
+			-- chevron vetorial (estilo Lucide chevron-right)
 			local chevHolder = create("Frame", {
 				Size = UDim2.new(0, 14, 0, 14),
 				Position = UDim2.new(1, -24, 0.5, -7),
 				BackgroundTransparency = 1,
 				Parent = row,
 			})
-			line(chevHolder, 0.3, 0.15, 0.7, 0.5, Theme.SubText, 0.12)
-			line(chevHolder, 0.7, 0.5, 0.3, 0.85, Theme.SubText, 0.12)
+			ln(chevHolder, 0.3, 0.15, 0.7, 0.5, Theme.SubText, 0.12)
+			ln(chevHolder, 0.7, 0.5, 0.3, 0.85, Theme.SubText, 0.12)
 
 			row.MouseEnter:Connect(function()
 				tween(row, { BackgroundColor3 = Window._theme.ButtonHover }, 0.1)
@@ -1184,7 +1944,7 @@ function MacOSLib:CreateWindow(config)
 				rowStroke.Color = T.Divider
 				rowLabel.TextColor3 = T.Text
 				for _, c in ipairs(chevHolder:GetChildren()) do
-					c.BackgroundColor3 = T.SubText
+					if c:IsA("Frame") then c.BackgroundColor3 = T.SubText end
 				end
 			end)
 			return row
@@ -1495,28 +2255,15 @@ function MacOSLib:CreateWindow(config)
 				Parent = selectedLabel,
 			})
 
-			-- chevron-down vetorial (estilo Lucide)
 			local chevronHolder = create("Frame", {
 				Size = UDim2.new(0, 10, 0, 10),
 				Position = UDim2.new(1, -16, 0.5, -5),
 				BackgroundTransparency = 1,
 				Parent = selectedLabel,
 			})
-			line(chevronHolder, 0.12, 0.32, 0.5, 0.7, Theme.SubText, 0.16)
-			line(chevronHolder, 0.5, 0.7, 0.88, 0.32, Theme.SubText, 0.16)
+			ln(chevronHolder, 0.12, 0.32, 0.5, 0.7, Theme.SubText, 0.16)
+			ln(chevronHolder, 0.5, 0.7, 0.88, 0.32, Theme.SubText, 0.16)
 
-			-- ── Overlay do menu suspenso ─────────────────────────
-			-- IMPORTANTE: o painel de opções (dropList) NÃO é filho
-			-- de "container" nem de "page". Se fosse, ele ficaria
-			-- preso dentro do ScrollingFrame da aba (que corta
-			-- conteúdo fora da área visível) e, mais grave, perderia
-			-- a "queda de braço" de profundidade pra qualquer outro
-			-- card que viesse depois dele na lista (Z-index no
-			-- Roblox é hierárquico: filhos nunca furam a "camada" de
-			-- outro ramo da árvore). A solução usada por toda lib de
-			-- UI séria no Roblox é desenhar o menu num overlay
-			-- separado, direto no ScreenGui raiz, e posicioná-lo
-			-- manualmente em coordenadas absolutas de tela.
 			local overlay = create("Frame", {
 				Name = "DropdownOverlay",
 				BackgroundTransparency = 1,
@@ -1570,9 +2317,6 @@ function MacOSLib:CreateWindow(config)
 				end
 			end
 
-			-- recalcula a posição do overlay em coordenadas absolutas
-			-- de tela, sempre relativa à posição atual de selectedLabel
-			-- (que pode se mover se a janela for arrastada/redimensionada)
 			local function repositionOverlay()
 				local pos = selectedLabel.AbsolutePosition
 				local size = selectedLabel.AbsoluteSize
@@ -1597,20 +2341,15 @@ function MacOSLib:CreateWindow(config)
 				if open then
 					closeDropdown()
 				else
-					-- fecha qualquer outro dropdown aberto antes de abrir este
 					Window:_closeAllDropdowns()
 					open = true
 					repositionOverlay()
 					overlay.Visible = true
 					tween(chevronHolder, { Rotation = 180 }, 0.15)
-					-- mantém o overlay colado embaixo do dropdown mesmo
-					-- se a janela for arrastada enquanto está aberto
 					moveConn = RunService.RenderStepped:Connect(repositionOverlay)
 				end
 			end)
 
-			-- fecha o dropdown se o tema mudar (evita overlay com
-			-- cores velhas pendurado na tela) e se a tab perder foco
 			table.insert(tab._widgets, function(T)
 				container.BackgroundColor3 = T.ButtonBG
 				container.BackgroundTransparency = T.Glass.Card
@@ -1622,7 +2361,7 @@ function MacOSLib:CreateWindow(config)
 				dropList.BackgroundColor3 = T.ButtonBG
 				dropStroke.Color = T.Divider
 				for _, c in ipairs(chevronHolder:GetChildren()) do
-					c.BackgroundColor3 = T.SubText
+					if c:IsA("Frame") then c.BackgroundColor3 = T.SubText end
 				end
 				for _, optBtn in ipairs(optionButtons) do
 					optBtn.TextColor3 = T.Text
