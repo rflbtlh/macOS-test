@@ -23,6 +23,7 @@ local function corner(parent, radius)
 	local c = Instance.new("UICorner")
 	c.CornerRadius = UDim.new(0, radius or 10)
 	c.Parent = parent
+	return c
 end
 
 local function stroke(parent, color, thickness, transparency)
@@ -32,6 +33,7 @@ local function stroke(parent, color, thickness, transparency)
 	s.Transparency = transparency or 0.5
 	s.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
 	s.Parent = parent
+	return s
 end
 
 local function padding(parent, top, left, right, bottom)
@@ -41,6 +43,7 @@ local function padding(parent, top, left, right, bottom)
 	p.PaddingRight = UDim.new(0, right or 0)
 	p.PaddingBottom = UDim.new(0, bottom or 0)
 	p.Parent = parent
+	return p
 end
 
 local function listlayout(parent, pad)
@@ -48,6 +51,7 @@ local function listlayout(parent, pad)
 	l.SortOrder = Enum.SortOrder.LayoutOrder
 	l.Padding = UDim.new(0, pad or 0)
 	l.Parent = parent
+	return l
 end
 
 local function makeDraggable(frame, handle)
@@ -80,7 +84,18 @@ local function makeDraggable(frame, handle)
 	end)
 end
 
-local Theme = {
+-- ══════════════════════════════════════════════════════════
+--   TEMAS
+--   Cada tema é uma tabela completa de cores. Pra criar um
+--   tema novo, basta copiar um existente e trocar as cores.
+--   "Glass" controla a transparência de cada camada (igual
+--   em todos os temas, mas pode ser sobrescrito por tema se
+--   quiser um vidro mais ou menos opaco em algum deles).
+-- ══════════════════════════════════════════════════════════
+
+local Themes = {}
+
+Themes.Light = {
 	Background  = Color3.fromRGB(245, 245, 247),
 	Sidebar     = Color3.fromRGB(235, 235, 237),
 	TopBar      = Color3.fromRGB(238, 238, 240),
@@ -99,294 +114,332 @@ local Theme = {
 	White       = Color3.fromRGB(255, 255, 255),
 	ButtonBG    = Color3.fromRGB(255, 255, 255),
 	ButtonHover = Color3.fromRGB(240, 240, 245),
-	IconStroke  = Color3.fromRGB(60, 60, 64),
+	IconStroke       = Color3.fromRGB(70, 70, 75),
 	IconStrokeActive = Color3.fromRGB(0, 122, 255),
+	Glass = { Window = 0.35, TopBar = 0.30, Sidebar = 0.32, Card = 0.25 },
 }
 
--- ── Configuração do efeito "vidro" (glass) ──────────────
--- Roblox não tem blur nativo por trás de elementos de UI (como o
--- backdrop-filter do CSS), então simulamos o efeito "vidro fosco"
--- combinando transparência alta com cores e bordas claras.
--- Ajuste os valores de Alpha para controlar o quão transparente cada
--- parte fica (0 = opaco, 1 = invisível). Entre 0.25 e 0.45 fica bom.
-local Glass = {
-	WindowAlpha  = 0.35, -- transparência do corpo da janela
-	TopBarAlpha  = 0.30, -- transparência da topbar
-	SidebarAlpha = 0.32, -- transparência da sidebar
-	CardAlpha    = 0.25, -- transparência dos cards (botões, sliders, etc)
+Themes.Dark = {
+	Background  = Color3.fromRGB(30, 30, 32),
+	Sidebar     = Color3.fromRGB(24, 24, 26),
+	TopBar      = Color3.fromRGB(26, 26, 28),
+	Text        = Color3.fromRGB(235, 235, 238),
+	SubText     = Color3.fromRGB(150, 150, 156),
+	Accent      = Color3.fromRGB(10, 132, 255),
+	Divider     = Color3.fromRGB(55, 55, 58),
+	TabActive   = Color3.fromRGB(50, 50, 54),
+	TabInactive = Color3.fromRGB(30, 30, 32),
+	ToggleOn    = Color3.fromRGB(48, 209, 88),
+	ToggleOff   = Color3.fromRGB(80, 80, 85),
+	SliderFill  = Color3.fromRGB(10, 132, 255),
+	SliderBG    = Color3.fromRGB(60, 60, 64),
+	InputBG     = Color3.fromRGB(42, 42, 45),
+	Shadow      = Color3.fromRGB(0, 0, 0),
+	White       = Color3.fromRGB(245, 245, 247),
+	ButtonBG    = Color3.fromRGB(40, 40, 43),
+	ButtonHover = Color3.fromRGB(50, 50, 54),
+	IconStroke       = Color3.fromRGB(190, 190, 195),
+	IconStrokeActive = Color3.fromRGB(10, 132, 255),
+	Glass = { Window = 0.25, TopBar = 0.20, Sidebar = 0.22, Card = 0.18 },
+}
+
+Themes.Nord = {
+	Background  = Color3.fromRGB(46, 52, 64),
+	Sidebar     = Color3.fromRGB(39, 44, 54),
+	TopBar      = Color3.fromRGB(42, 48, 59),
+	Text        = Color3.fromRGB(229, 233, 240),
+	SubText     = Color3.fromRGB(150, 160, 180),
+	Accent      = Color3.fromRGB(136, 192, 208),
+	Divider     = Color3.fromRGB(67, 76, 94),
+	TabActive   = Color3.fromRGB(59, 66, 82),
+	TabInactive = Color3.fromRGB(46, 52, 64),
+	ToggleOn    = Color3.fromRGB(163, 190, 140),
+	ToggleOff   = Color3.fromRGB(76, 86, 106),
+	SliderFill  = Color3.fromRGB(136, 192, 208),
+	SliderBG    = Color3.fromRGB(67, 76, 94),
+	InputBG     = Color3.fromRGB(59, 66, 82),
+	Shadow      = Color3.fromRGB(0, 0, 0),
+	White       = Color3.fromRGB(236, 239, 244),
+	ButtonBG    = Color3.fromRGB(52, 59, 73),
+	ButtonHover = Color3.fromRGB(62, 70, 87),
+	IconStroke       = Color3.fromRGB(198, 205, 217),
+	IconStrokeActive = Color3.fromRGB(136, 192, 208),
+	Glass = { Window = 0.25, TopBar = 0.20, Sidebar = 0.22, Card = 0.18 },
+}
+
+Themes.Rose = {
+	Background  = Color3.fromRGB(255, 246, 248),
+	Sidebar     = Color3.fromRGB(252, 235, 240),
+	TopBar      = Color3.fromRGB(253, 238, 242),
+	Text        = Color3.fromRGB(60, 30, 40),
+	SubText     = Color3.fromRGB(150, 110, 125),
+	Accent      = Color3.fromRGB(233, 79, 132),
+	Divider     = Color3.fromRGB(240, 210, 220),
+	TabActive   = Color3.fromRGB(255, 255, 255),
+	TabInactive = Color3.fromRGB(252, 235, 240),
+	ToggleOn    = Color3.fromRGB(233, 79, 132),
+	ToggleOff   = Color3.fromRGB(225, 195, 205),
+	SliderFill  = Color3.fromRGB(233, 79, 132),
+	SliderBG    = Color3.fromRGB(240, 210, 220),
+	InputBG     = Color3.fromRGB(255, 255, 255),
+	Shadow      = Color3.fromRGB(0, 0, 0),
+	White       = Color3.fromRGB(255, 255, 255),
+	ButtonBG    = Color3.fromRGB(255, 255, 255),
+	ButtonHover = Color3.fromRGB(250, 228, 235),
+	IconStroke       = Color3.fromRGB(110, 60, 80),
+	IconStrokeActive = Color3.fromRGB(233, 79, 132),
+	Glass = { Window = 0.35, TopBar = 0.30, Sidebar = 0.32, Card = 0.25 },
 }
 
 -- ══════════════════════════════════════════════════════════
---   ÍCONES VETORIAIS
---   Em vez de emojis (que variam de fonte pra fonte e não
---   seguem o tema), os ícones aqui são desenhados na hora com
---   Frames + UICorner formando traços geométricos simples.
---   Isso garante visual consistente, nítido em qualquer
---   resolução e sem depender de nenhum asset externo.
+--   ÍCONES ESTILO LUCIDE
+--   Lucide usa traços finos (stroke, sem preenchimento),
+--   pontas redondas e viewBox 24x24 com stroke-width 2.
+--   Reproduzimos isso aqui com "linhas" (Frames bem finos
+--   com UICorner total, ou seja, formato cápsula) — a mesma
+--   técnica de ponta arredondada do Lucide, só que feita com
+--   Frames em vez de SVG <path>, já que o Roblox não
+--   renderiza SVG nativamente.
 --
---   Cada função de ícone recebe um "parent" (geralmente um
---   Frame quadrado de tamanho fixo) e desenha dentro dele,
---   usando Scale (0 a 1) para todas as posições/tamanhos —
---   assim o ícone escala automaticamente com o container.
+--   Cada ícone recebe um container quadrado (em Scale 0–1)
+--   e uma cor, e desenha os traços dentro dele.
 -- ══════════════════════════════════════════════════════════
 
 local Icons = {}
 
--- pequeno helper pra criar um "traço" (linha) dentro do ícone
-local function iconLine(parent, x, y, w, h, color, rounded)
-	local line = create("Frame", {
+-- desenha uma "linha" fina com ponta redonda entre dois pontos relativos (0–1)
+local function line(parent, x1, y1, x2, y2, color, thickness)
+	thickness = thickness or 0.085
+	local dx, dy = x2 - x1, y2 - y1
+	local length = math.sqrt(dx * dx + dy * dy)
+	local angle = math.atan2(dy, dx)
+
+	local seg = create("Frame", {
+		AnchorPoint = Vector2.new(0, 0.5),
 		BackgroundColor3 = color,
 		BorderSizePixel = 0,
+		Parent = parent,
+	})
+	corner(seg, 100)
+	-- usamos UIScale-friendly absolute math via bound to parent size on render
+	local function layout()
+		local absSize = parent.AbsoluteSize
+		local base = math.min(absSize.X, absSize.Y)
+		if base <= 0 then return end
+		seg.Size = UDim2.new(0, length * base, 0, thickness * base)
+		seg.Position = UDim2.new(x1, 0, y1, 0)
+		seg.Rotation = math.deg(angle)
+	end
+	layout()
+	parent:GetPropertyChangedSignal("AbsoluteSize"):Connect(layout)
+	return seg
+end
+
+-- desenha um círculo (apenas contorno, igual ao stroke do Lucide)
+local function ring(parent, cx, cy, r, color, thickness)
+	thickness = thickness or 0.085
+	local c = create("Frame", {
+		AnchorPoint = Vector2.new(0.5, 0.5),
+		BackgroundTransparency = 1,
+		Parent = parent,
+	})
+	local function layout()
+		local absSize = parent.AbsoluteSize
+		local base = math.min(absSize.X, absSize.Y)
+		if base <= 0 then return end
+		c.Position = UDim2.new(cx, 0, cy, 0)
+		c.Size = UDim2.new(0, r * 2 * base, 0, r * 2 * base)
+	end
+	layout()
+	parent:GetPropertyChangedSignal("AbsoluteSize"):Connect(layout)
+	corner(c, 100)
+	stroke(c, color, 2, 0)
+	c.ZIndex = 1
+	return c
+end
+
+-- desenha um retângulo arredondado (apenas contorno)
+local function roundRect(parent, x, y, w, h, color, radius)
+	local r = create("Frame", {
+		BackgroundTransparency = 1,
 		Position = UDim2.new(x, 0, y, 0),
 		Size = UDim2.new(w, 0, h, 0),
 		Parent = parent,
 	})
-	if rounded then
-		corner(line, 100)
-	end
-	return line
+	corner(r, radius or 4)
+	stroke(r, color, 2, 0)
+	return r
 end
 
--- Casa (Home) — usada em tabs gerais / página inicial
-Icons.Home = function(parent, color)
-	color = color or Theme.IconStroke
-	-- telhado (triângulo feito com um quadrado rotacionado)
-	local roof = create("Frame", {
-		BackgroundColor3 = color,
-		BorderSizePixel = 0,
-		AnchorPoint = Vector2.new(0.5, 0.5),
-		Position = UDim2.new(0.5, 0, 0.32, 0),
-		Size = UDim2.new(0.62, 0, 0.62, 0),
-		Rotation = 45,
-		Parent = parent,
-	})
-	corner(roof, 3)
-	-- corpo da casa
-	iconLine(parent, 0.22, 0.46, 0.56, 0.4, color, false)
-	-- porta (recorte usando a cor de fundo do card por cima)
-	local door = create("Frame", {
-		BackgroundColor3 = Theme.ButtonBG,
-		BackgroundTransparency = Glass.CardAlpha,
-		BorderSizePixel = 0,
-		Position = UDim2.new(0.42, 0, 0.62, 0),
-		Size = UDim2.new(0.16, 0, 0.24, 0),
-		ZIndex = 2,
-		Parent = parent,
-	})
-	door.ZIndex = (parent:FindFirstChild("UIListLayout") and 1) or 2
+-- house (Principal)
+Icons.House = function(parent, color)
+	line(parent, 0.5, 0.08, 0.92, 0.46, color)
+	line(parent, 0.5, 0.08, 0.08, 0.46, color)
+	line(parent, 0.16, 0.4, 0.16, 0.92, color)
+	line(parent, 0.84, 0.4, 0.84, 0.92, color)
+	line(parent, 0.16, 0.92, 0.84, 0.92, color)
+	line(parent, 0.4, 0.92, 0.4, 0.62, color)
+	line(parent, 0.4, 0.62, 0.6, 0.62, color)
+	line(parent, 0.6, 0.62, 0.6, 0.92, color)
 end
 
--- Paleta de cores — usada em tabs de visual/aparência
+-- palette (Visual)
 Icons.Palette = function(parent, color)
-	color = color or Theme.IconStroke
-	local base = create("Frame", {
-		BackgroundColor3 = color,
-		BorderSizePixel = 0,
-		AnchorPoint = Vector2.new(0.5, 0.5),
-		Position = UDim2.new(0.46, 0, 0.5, 0),
-		Size = UDim2.new(0.74, 0, 0.6, 0),
-		Parent = parent,
-	})
-	corner(base, 100)
-	-- "furo" do polegar
-	local thumbHole = create("Frame", {
-		BackgroundColor3 = Theme.ButtonBG,
-		BackgroundTransparency = Glass.CardAlpha,
-		BorderSizePixel = 0,
-		AnchorPoint = Vector2.new(0.5, 0.5),
-		Position = UDim2.new(0.78, 0, 0.62, 0),
-		Size = UDim2.new(0.26, 0, 0.26, 0),
-		Parent = base,
-	})
-	corner(thumbHole, 100)
+	-- corpo externo da paleta (circulo grande levemente assimétrico, aproximado por anel)
+	ring(parent, 0.48, 0.5, 0.42, color)
 	-- pingos de tinta
-	local dotPositions = {
-		{0.28, 0.32}, {0.5, 0.24}, {0.7, 0.34},
-	}
-	for _, p in ipairs(dotPositions) do
+	local dots = { {0.34, 0.32, 0.07}, {0.56, 0.28, 0.07}, {0.7, 0.46, 0.07}, {0.36, 0.62, 0.07} }
+	for _, d in ipairs(dots) do
 		local dot = create("Frame", {
-			BackgroundColor3 = Theme.Accent,
-			BorderSizePixel = 0,
 			AnchorPoint = Vector2.new(0.5, 0.5),
-			Position = UDim2.new(p[1], 0, p[2], 0),
-			Size = UDim2.new(0.14, 0, 0.14, 0),
-			Parent = base,
-		})
-		corner(dot, 100)
-	end
-end
-
--- Engrenagem — usada em tabs de configurações
-Icons.Gear = function(parent, color)
-	color = color or Theme.IconStroke
-	local center = create("Frame", {
-		BackgroundColor3 = color,
-		BorderSizePixel = 0,
-		AnchorPoint = Vector2.new(0.5, 0.5),
-		Position = UDim2.new(0.5, 0, 0.5, 0),
-		Size = UDim2.new(0.42, 0, 0.42, 0),
-		Parent = parent,
-	})
-	corner(center, 100)
-	local hole = create("Frame", {
-		BackgroundColor3 = Theme.ButtonBG,
-		BackgroundTransparency = Glass.CardAlpha,
-		BorderSizePixel = 0,
-		AnchorPoint = Vector2.new(0.5, 0.5),
-		Position = UDim2.new(0.5, 0, 0.5, 0),
-		Size = UDim2.new(0.16, 0, 0.16, 0),
-		Parent = center,
-	})
-	corner(hole, 100)
-	-- "dentes" da engrenagem em 4 direções
-	local toothPositions = {
-		{0.5, 0.06, 0.18, 0.22},
-		{0.5, 0.94, 0.18, 0.22},
-		{0.06, 0.5, 0.22, 0.18},
-		{0.94, 0.5, 0.22, 0.18},
-	}
-	for _, t in ipairs(toothPositions) do
-		local tooth = create("Frame", {
 			BackgroundColor3 = color,
 			BorderSizePixel = 0,
-			AnchorPoint = Vector2.new(0.5, 0.5),
-			Position = UDim2.new(t[1], 0, t[2], 0),
-			Size = UDim2.new(t[3], 0, t[4], 0),
 			Parent = parent,
 		})
-		corner(tooth, 2)
+		corner(dot, 100)
+		local function layout()
+			local absSize = parent.AbsoluteSize
+			local base = math.min(absSize.X, absSize.Y)
+			if base <= 0 then return end
+			dot.Position = UDim2.new(d[1], 0, d[2], 0)
+			dot.Size = UDim2.new(0, d[3] * 2 * base, 0, d[3] * 2 * base)
+		end
+		layout()
+		parent:GetPropertyChangedSignal("AbsoluteSize"):Connect(layout)
 	end
 end
 
--- Controle deslizante / Display — usada em tabs de câmera/gráficos
+-- settings / gear (Config)
+Icons.Settings = function(parent, color)
+	ring(parent, 0.5, 0.5, 0.14, color)
+	local teeth = 8
+	for i = 1, teeth do
+		local angle = (i - 1) * (360 / teeth)
+		local rad = math.rad(angle)
+		local x1 = 0.5 + math.cos(rad) * 0.3
+		local y1 = 0.5 + math.sin(rad) * 0.3
+		local x2 = 0.5 + math.cos(rad) * 0.42
+		local y2 = 0.5 + math.sin(rad) * 0.42
+		line(parent, x1, y1, x2, y2, color, 0.1)
+	end
+end
+
+-- sliders-horizontal (uso geral)
 Icons.Sliders = function(parent, color)
-	color = color or Theme.IconStroke
-	local rows = {0.22, 0.5, 0.78}
+	local rows = { 0.26, 0.5, 0.74 }
+	local knobX = { 0.66, 0.34, 0.56 }
 	for i, y in ipairs(rows) do
-		iconLine(parent, 0.12, y - 0.04, 0.76, 0.08, Theme.Divider, true)
-		local knobX = (i == 1 and 0.66) or (i == 2 and 0.32) or 0.52
+		line(parent, 0.08, y, 0.92, y, color, 0.07)
 		local knob = create("Frame", {
+			AnchorPoint = Vector2.new(0.5, 0.5),
 			BackgroundColor3 = color,
 			BorderSizePixel = 0,
-			AnchorPoint = Vector2.new(0.5, 0.5),
-			Position = UDim2.new(knobX, 0, y, 0),
-			Size = UDim2.new(0.16, 0, 0.16, 0),
 			Parent = parent,
 		})
 		corner(knob, 100)
+		local function layout()
+			local absSize = parent.AbsoluteSize
+			local base = math.min(absSize.X, absSize.Y)
+			if base <= 0 then return end
+			knob.Position = UDim2.new(knobX[i], 0, y, 0)
+			knob.Size = UDim2.new(0, 0.1 * base, 0, 0.1 * base)
+		end
+		layout()
+		parent:GetPropertyChangedSignal("AbsoluteSize"):Connect(layout)
 	end
 end
 
--- Alto-falante — usada em tabs de áudio
-Icons.Speaker = function(parent, color)
-	color = color or Theme.IconStroke
-	local body = create("Frame", {
-		BackgroundColor3 = color,
-		BorderSizePixel = 0,
-		AnchorPoint = Vector2.new(0.5, 0.5),
-		Position = UDim2.new(0.32, 0, 0.5, 0),
-		Size = UDim2.new(0.22, 0, 0.42, 0),
-		Parent = parent,
-	})
-	corner(body, 3)
-	local cone = create("Frame", {
-		BackgroundColor3 = color,
-		BorderSizePixel = 0,
-		AnchorPoint = Vector2.new(0.5, 0.5),
-		Position = UDim2.new(0.46, 0, 0.5, 0),
-		Size = UDim2.new(0.2, 0, 0.7, 0),
-		Rotation = 0,
-		Parent = parent,
-	})
-	corner(cone, 100)
-	-- ondas sonoras (dois arcos simples feitos com strokes em frames vazados)
-	for i, r in ipairs({0.16, 0.28}) do
-		local wave = create("Frame", {
-			BackgroundTransparency = 1,
-			AnchorPoint = Vector2.new(0, 0.5),
-			Position = UDim2.new(0.6 + (i * 0.1), 0, 0.5, 0),
-			Size = UDim2.new(r, 0, r * 2.2, 0),
-			Parent = parent,
-		})
-		corner(wave, 100)
-		stroke(wave, color, 2, 0)
-	end
+-- volume-2 / speaker (Áudio)
+Icons.Volume = function(parent, color)
+	line(parent, 0.08, 0.38, 0.3, 0.38, color)
+	line(parent, 0.08, 0.38, 0.08, 0.62, color)
+	line(parent, 0.08, 0.62, 0.3, 0.62, color)
+	line(parent, 0.3, 0.38, 0.48, 0.2, color)
+	line(parent, 0.3, 0.62, 0.48, 0.8, color)
+	line(parent, 0.48, 0.2, 0.48, 0.8, color)
+	-- ondas sonoras
+	line(parent, 0.62, 0.38, 0.68, 0.32, color, 0.07)
+	line(parent, 0.62, 0.62, 0.68, 0.68, color, 0.07)
+	line(parent, 0.74, 0.3, 0.82, 0.2, color, 0.07)
+	line(parent, 0.74, 0.7, 0.82, 0.8, color, 0.07)
 end
 
--- Informação (i circular) — usada em tabs de info/sobre
+-- info (Sobre)
 Icons.Info = function(parent, color)
-	color = color or Theme.IconStroke
-	local circle = create("Frame", {
-		BackgroundTransparency = 1,
-		AnchorPoint = Vector2.new(0.5, 0.5),
-		Position = UDim2.new(0.5, 0, 0.5, 0),
-		Size = UDim2.new(0.82, 0, 0.82, 0),
-		Parent = parent,
-	})
-	corner(circle, 100)
-	stroke(circle, color, 2, 0)
+	ring(parent, 0.5, 0.5, 0.4, color)
 	local dot = create("Frame", {
+		AnchorPoint = Vector2.new(0.5, 0.5),
 		BackgroundColor3 = color,
 		BorderSizePixel = 0,
-		AnchorPoint = Vector2.new(0.5, 0.5),
-		Position = UDim2.new(0.5, 0, 0.28, 0),
-		Size = UDim2.new(0.12, 0, 0.12, 0),
 		Parent = parent,
 	})
 	corner(dot, 100)
-	iconLine(parent, 0.44, 0.46, 0.12, 0.32, color, true)
+	local function dotLayout()
+		local absSize = parent.AbsoluteSize
+		local base = math.min(absSize.X, absSize.Y)
+		if base <= 0 then return end
+		dot.Position = UDim2.new(0.5, 0, 0.28, 0)
+		dot.Size = UDim2.new(0, 0.07 * base, 0, 0.07 * base)
+	end
+	dotLayout()
+	parent:GetPropertyChangedSignal("AbsoluteSize"):Connect(dotLayout)
+	line(parent, 0.5, 0.46, 0.5, 0.74, color)
 end
 
--- Estrela — uso geral / favoritos / destaque
+-- star (uso geral / favoritos)
 Icons.Star = function(parent, color)
-	color = color or Theme.IconStroke
-	-- aproximação simples de estrela com dois quadrados rotacionados (efeito "diamante duplo")
-	local a = create("Frame", {
-		BackgroundColor3 = color,
-		BorderSizePixel = 0,
-		AnchorPoint = Vector2.new(0.5, 0.5),
-		Position = UDim2.new(0.5, 0, 0.5, 0),
-		Size = UDim2.new(0.62, 0, 0.62, 0),
-		Rotation = 0,
-		Parent = parent,
-	})
-	corner(a, 4)
-	local b = create("Frame", {
-		BackgroundColor3 = color,
-		BorderSizePixel = 0,
-		AnchorPoint = Vector2.new(0.5, 0.5),
-		Position = UDim2.new(0.5, 0, 0.5, 0),
-		Size = UDim2.new(0.62, 0, 0.62, 0),
-		Rotation = 45,
-		Parent = parent,
-	})
-	corner(b, 4)
+	local points = {}
+	local cx, cy = 0.5, 0.52
+	local outer, inner = 0.42, 0.18
+	for i = 0, 9 do
+		local angle = math.rad(-90 + i * 36)
+		local r = (i % 2 == 0) and outer or inner
+		table.insert(points, { cx + math.cos(angle) * r, cy + math.sin(angle) * r })
+	end
+	for i = 1, #points do
+		local p1 = points[i]
+		local p2 = points[(i % #points) + 1]
+		line(parent, p1[1], p1[2], p2[1], p2[2], color, 0.07)
+	end
 end
 
--- Escudo — uso geral / segurança / proteção
+-- shield (uso geral / segurança)
 Icons.Shield = function(parent, color)
-	color = color or Theme.IconStroke
-	local top = create("Frame", {
-		BackgroundColor3 = color,
-		BorderSizePixel = 0,
-		AnchorPoint = Vector2.new(0.5, 0.5),
-		Position = UDim2.new(0.5, 0, 0.4, 0),
-		Size = UDim2.new(0.6, 0, 0.5, 0),
-		Parent = parent,
-	})
-	corner(top, 100)
-	local bottom = create("Frame", {
-		BackgroundColor3 = color,
-		BorderSizePixel = 0,
-		AnchorPoint = Vector2.new(0.5, 0.5),
-		Position = UDim2.new(0.5, 0, 0.62, 0),
-		Size = UDim2.new(0.6, 0, 0.42, 0),
-		Rotation = 45,
-		Parent = parent,
-	})
+	line(parent, 0.5, 0.06, 0.86, 0.22, color)
+	line(parent, 0.86, 0.22, 0.86, 0.5, color)
+	line(parent, 0.86, 0.5, 0.5, 0.92, color)
+	line(parent, 0.5, 0.92, 0.14, 0.5, color)
+	line(parent, 0.14, 0.5, 0.14, 0.22, color)
+	line(parent, 0.14, 0.22, 0.5, 0.06, color)
 end
 
--- Função genérica pra desenhar um ícone por nome dentro de um container
+-- monitor (gráficos / display)
+Icons.Monitor = function(parent, color)
+	roundRect(parent, 0.08, 0.14, 0.84, 0.56, color, 6)
+	line(parent, 0.5, 0.7, 0.5, 0.86, color)
+	line(parent, 0.3, 0.86, 0.7, 0.86, color)
+end
+
+-- user (perfil)
+Icons.User = function(parent, color)
+	ring(parent, 0.5, 0.32, 0.16, color)
+	line(parent, 0.18, 0.88, 0.22, 0.68, color)
+	line(parent, 0.22, 0.68, 0.78, 0.68, color)
+	line(parent, 0.78, 0.68, 0.82, 0.88, color)
+	line(parent, 0.18, 0.88, 0.82, 0.88, color)
+end
+
+-- bell (notificações)
+Icons.Bell = function(parent, color)
+	line(parent, 0.5, 0.1, 0.3, 0.18, color)
+	line(parent, 0.3, 0.18, 0.22, 0.6, color)
+	line(parent, 0.22, 0.6, 0.78, 0.6, color)
+	line(parent, 0.78, 0.6, 0.7, 0.18, color)
+	line(parent, 0.7, 0.18, 0.5, 0.1, color)
+	line(parent, 0.18, 0.6, 0.82, 0.6, color)
+	line(parent, 0.42, 0.72, 0.58, 0.72, color, 0.07)
+end
+
 local function drawIcon(container, name, color)
 	local fn = Icons[name]
 	if fn then
@@ -394,13 +447,18 @@ local function drawIcon(container, name, color)
 	end
 end
 
+MacOSLib.Themes = Themes
+MacOSLib.Icons = Icons
+
 function MacOSLib:CreateWindow(config)
 	config = config or {}
-	local title    = config.Title     or "MacOS UI"
-	local subtitle = config.Subtitle  or "v1.0"
-	local width    = config.Width     or 520
-	local height   = config.Height    or 360
-	local key      = config.ToggleKey or Enum.KeyCode.RightControl
+	local title       = config.Title     or "MacOS UI"
+	local subtitle     = config.Subtitle  or "v1.0"
+	local width        = config.Width     or 520
+	local height       = config.Height    or 360
+	local key          = config.ToggleKey or Enum.KeyCode.RightControl
+	local themeName    = config.Theme     or "Light"
+	local Theme        = Themes[themeName] or Themes.Light
 
 	local gui = create("ScreenGui", {
 		Name = "MacOSLib",
@@ -425,40 +483,43 @@ function MacOSLib:CreateWindow(config)
 		BackgroundColor3 = Theme.Shadow,
 		BackgroundTransparency = 0.82,
 		BorderSizePixel = 0,
+		ZIndex = 1,
 		Parent = gui,
 	})
 	corner(shadow, 16)
 
+	-- restoreSize guarda o tamanho/posição "normal" da janela pra
+	-- restaurar quando o usuário sair do modo maximizado.
+	local restoreSize = UDim2.new(0, width, 0, height)
+	local restorePos = UDim2.new(0.5, -width / 2, 0.5, -height / 2)
+	local isMaximized = false
+	local isMinimized = false
+
 	local window = create("Frame", {
 		Name = "Window",
-		Size = UDim2.new(0, width, 0, height),
-		Position = UDim2.new(0.5, -width / 2, 0.5, -height / 2),
+		Size = restoreSize,
+		Position = restorePos,
 		BackgroundColor3 = Theme.Background,
-		BackgroundTransparency = Glass.WindowAlpha,
+		BackgroundTransparency = Theme.Glass.Window,
 		BorderSizePixel = 0,
 		ClipsDescendants = true,
+		ZIndex = 1,
 		Parent = gui,
 	})
 	corner(window, 12)
 	stroke(window, Theme.Divider, 1.5, 0.15)
 
+	-- FIX: topbar não tem mais o "topbarFix" duplicado (era ele que
+	-- criava a linha visível no meio do título). Um único UICorner
+	-- com Z-index correto já resolve o arredondamento do topo.
 	local topbar = create("Frame", {
 		Name = "TopBar",
 		Size = UDim2.new(1, 0, 0, 44),
 		BackgroundColor3 = Theme.TopBar,
-		BackgroundTransparency = Glass.TopBarAlpha,
+		BackgroundTransparency = Theme.Glass.TopBar,
 		BorderSizePixel = 0,
+		ZIndex = 2,
 		Parent = window,
-	})
-	corner(topbar, 12)
-
-	local topbarFix = create("Frame", {
-		Size = UDim2.new(1, 0, 0.5, 0),
-		Position = UDim2.new(0, 0, 0.5, 0),
-		BackgroundColor3 = Theme.TopBar,
-		BackgroundTransparency = Glass.TopBarAlpha,
-		BorderSizePixel = 0,
-		Parent = topbar,
 	})
 
 	local topbarDivider = create("Frame", {
@@ -466,8 +527,20 @@ function MacOSLib:CreateWindow(config)
 		Position = UDim2.new(0, 0, 1, 0),
 		BackgroundColor3 = Theme.Divider,
 		BorderSizePixel = 0,
+		ZIndex = 2,
 		Parent = topbar,
 	})
+
+	-- FIX: a janela inteira (window) já tem ClipsDescendants = true e
+	-- UICorner com raio 12. Antes a topbar tinha seu próprio UICorner
+	-- de raio 12 também, mas como ela é maior que o raio nas bordas
+	-- inferiores, o corner ali não fazia diferença — o bug real do
+	-- "canto reto" estava no ContentHolder (ver mais abaixo), que não
+	-- herdava nenhum corner e vazava por fora do clip da janela em
+	-- certas resoluções. Resolvido fazendo o ContentHolder ocupar
+	-- exatamente a área restante sem nenhuma sobreposição de pixel
+	-- com a borda da window, então o ClipsDescendants da própria
+	-- window cuida do arredondamento.
 
 	local trafficColors = {
 		Color3.fromRGB(255, 95, 87),
@@ -481,23 +554,61 @@ function MacOSLib:CreateWindow(config)
 			Position = UDim2.new(0, trafficX, 0.5, -6),
 			BackgroundColor3 = trafficColors[i],
 			BorderSizePixel = 0,
+			ZIndex = 3,
 			Parent = topbar,
 		})
 		corner(dot, 50)
 		trafficX = trafficX + 20
+
+		local btn = create("TextButton", {
+			Size = UDim2.new(1, 0, 1, 0),
+			BackgroundTransparency = 1,
+			Text = "",
+			Parent = dot,
+		})
+
 		if i == 1 then
-			local closeBtn = create("TextButton", {
-				Size = UDim2.new(1, 0, 1, 0),
-				BackgroundTransparency = 1,
-				Text = "",
-				Parent = dot,
-			})
-			closeBtn.MouseButton1Click:Connect(function()
+			-- fechar
+			btn.MouseButton1Click:Connect(function()
 				tween(shadow, { BackgroundTransparency = 1 }, 0.2)
 				tween(window, { BackgroundTransparency = 1, Size = UDim2.new(0, width, 0, 0) }, 0.2)
 				task.delay(0.25, function()
 					gui:Destroy()
 				end)
+			end)
+		elseif i == 2 then
+			-- minimizar: encolhe a janela até só sobrar a topbar
+			btn.MouseButton1Click:Connect(function()
+				isMinimized = not isMinimized
+				if isMinimized then
+					tween(window, { Size = UDim2.new(window.Size.X.Scale, window.Size.X.Offset, 0, 44) }, 0.25)
+					tween(shadow, { Size = UDim2.new(0, window.Size.X.Offset + 16, 0, 60) }, 0.25)
+				else
+					local target = isMaximized and restoreSize or restoreSize
+					tween(window, { Size = restoreSize }, 0.25)
+					tween(shadow, { Size = UDim2.new(0, restoreSize.X.Offset + 16, 0, restoreSize.Y.Offset + 16) }, 0.25)
+				end
+			end)
+		elseif i == 3 then
+			-- maximizar: ocupa quase toda a tela, alterna de volta ao tamanho original
+			btn.MouseButton1Click:Connect(function()
+				isMaximized = not isMaximized
+				if isMaximized then
+					isMinimized = false
+					tween(window, {
+						Size = UDim2.new(1, -40, 1, -40),
+						Position = UDim2.new(0, 20, 0, 20),
+					}, 0.25)
+					tween(shadow, {
+						Size = UDim2.new(1, -24, 1, -24),
+						Position = UDim2.new(0, 12, 0, 12),
+					}, 0.25)
+				else
+					tween(window, { Size = restoreSize, Position = restorePos }, 0.25)
+					tween(shadow, {
+						Size = UDim2.new(0, restoreSize.X.Offset + 16, 0, restoreSize.Y.Offset + 16),
+					}, 0.25)
+				end
 			end)
 		end
 	end
@@ -510,6 +621,7 @@ function MacOSLib:CreateWindow(config)
 		TextColor3 = Theme.Text,
 		Font = Enum.Font.GothamBold,
 		TextSize = 13,
+		ZIndex = 3,
 		Parent = topbar,
 	})
 
@@ -523,6 +635,7 @@ function MacOSLib:CreateWindow(config)
 		Font = Enum.Font.Gotham,
 		TextSize = 11,
 		TextXAlignment = Enum.TextXAlignment.Right,
+		ZIndex = 3,
 		Parent = topbar,
 	})
 
@@ -549,8 +662,9 @@ function MacOSLib:CreateWindow(config)
 		Size = UDim2.new(0, 130, 1, -44),
 		Position = UDim2.new(0, 0, 0, 44),
 		BackgroundColor3 = Theme.Sidebar,
-		BackgroundTransparency = Glass.SidebarAlpha,
+		BackgroundTransparency = Theme.Glass.Sidebar,
 		BorderSizePixel = 0,
+		ZIndex = 1,
 		Parent = window,
 	})
 
@@ -572,24 +686,67 @@ function MacOSLib:CreateWindow(config)
 	listlayout(tabList, 2)
 	padding(tabList, 0, 8, 8, 0)
 
+	-- FIX: ContentHolder agora fica estritamente dentro da área da
+	-- window (sem encostar 1px nas bordas externas), e a window é
+	-- quem corta (ClipsDescendants) qualquer coisa que vaze. Isso
+	-- elimina o "canto reto" que aparecia no inferior direito.
 	local contentHolder = create("Frame", {
 		Name = "ContentHolder",
 		Size = UDim2.new(1, -130, 1, -44),
 		Position = UDim2.new(0, 130, 0, 44),
 		BackgroundTransparency = 1,
 		ClipsDescendants = true,
+		ZIndex = 1,
 		Parent = window,
 	})
 
 	window.Size = UDim2.new(0, width, 0, 0)
 	window.BackgroundTransparency = 1
 	shadow.BackgroundTransparency = 1
-	tween(window, { Size = UDim2.new(0, width, 0, height), BackgroundTransparency = Glass.WindowAlpha }, 0.3, Enum.EasingStyle.Back)
+	tween(window, { Size = restoreSize, BackgroundTransparency = Theme.Glass.Window }, 0.3, Enum.EasingStyle.Back)
 	tween(shadow, { BackgroundTransparency = 0.82 }, 0.3)
 
 	local Window = {}
 	Window._tabs = {}
 	Window._activeTab = nil
+	Window._theme = Theme
+	Window._themeName = themeName
+
+	-- ── Sistema de troca de tema em tempo real ──────────────
+	-- Guarda referências dos elementos que precisam ser
+	-- repintados quando o tema muda, pra não precisar recriar
+	-- a janela inteira.
+	Window._paintables = {
+		{ obj = window, prop = "BackgroundColor3", key = "Background" },
+		{ obj = topbar, prop = "BackgroundColor3", key = "TopBar" },
+		{ obj = topbarDivider, prop = "BackgroundColor3", key = "Divider" },
+		{ obj = sidebar, prop = "BackgroundColor3", key = "Sidebar" },
+		{ obj = sidebarDivider, prop = "BackgroundColor3", key = "Divider" },
+		{ obj = titleLabel, prop = "TextColor3", key = "Text" },
+		{ obj = subtitleLabel, prop = "TextColor3", key = "SubText" },
+	}
+
+	function Window:SetTheme(newThemeName)
+		local NewTheme = Themes[newThemeName]
+		if not NewTheme then return end
+		Theme = NewTheme
+		Window._theme = NewTheme
+		Window._themeName = newThemeName
+
+		tween(window, { BackgroundColor3 = NewTheme.Background, BackgroundTransparency = NewTheme.Glass.Window }, 0.25)
+		tween(topbar, { BackgroundColor3 = NewTheme.TopBar, BackgroundTransparency = NewTheme.Glass.TopBar }, 0.25)
+		tween(sidebar, { BackgroundColor3 = NewTheme.Sidebar, BackgroundTransparency = NewTheme.Glass.Sidebar }, 0.25)
+		tween(topbarDivider, { BackgroundColor3 = NewTheme.Divider }, 0.25)
+		tween(sidebarDivider, { BackgroundColor3 = NewTheme.Divider }, 0.25)
+		tween(titleLabel, { TextColor3 = NewTheme.Text }, 0.25)
+		tween(subtitleLabel, { TextColor3 = NewTheme.SubText }, 0.25)
+		tween(window:FindFirstChildOfClass("UIStroke"), { Color = NewTheme.Divider }, 0.25)
+
+		-- repinta todas as tabs, páginas e widgets já criados
+		for _, t in pairs(Window._tabs) do
+			t:_repaint(NewTheme)
+		end
+	end
 
 	function Window:_setActive(tab)
 		if self._activeTab == tab then return end
@@ -601,14 +758,15 @@ function MacOSLib:CreateWindow(config)
 			}, 0.15)
 			t._label.TextColor3 = isActive and Theme.Text or Theme.SubText
 			t._label.Font = isActive and Enum.Font.GothamSemibold or Enum.Font.Gotham
-			-- atualiza a cor dos traços do ícone vetorial pra refletir o estado ativo
 			if t._iconHolder then
+				local targetColor = isActive and Theme.IconStrokeActive or Theme.IconStroke
 				for _, child in ipairs(t._iconHolder:GetDescendants()) do
-					if child:IsA("Frame") and child.BackgroundColor3 == Theme.IconStroke then
-						child.BackgroundColor3 = isActive and Theme.IconStrokeActive or Theme.IconStroke
+					if child:IsA("Frame") and child.BackgroundTransparency == 0 then
+						child.BackgroundColor3 = targetColor
 					end
-					if child:IsA("UIStroke") and child.Color == Theme.IconStroke then
-						child.Color = isActive and Theme.IconStrokeActive or Theme.IconStroke
+					local st = child:IsA("UIStroke") and child or nil
+					if st then
+						st.Color = targetColor
 					end
 				end
 			end
@@ -618,25 +776,28 @@ function MacOSLib:CreateWindow(config)
 
 	function Window:Notify(ntitle, message, duration)
 		duration = duration or 3
+		local T = Window._theme
 		local notif = create("Frame", {
 			Size = UDim2.new(0, 260, 0, 64),
 			Position = UDim2.new(1, 10, 1, -80),
-			BackgroundColor3 = Theme.White,
+			BackgroundColor3 = T.White,
 			BorderSizePixel = 0,
+			ZIndex = 50,
 			Parent = gui,
 		})
 		corner(notif, 12)
-		stroke(notif, Theme.Divider, 1, 0.3)
+		stroke(notif, T.Divider, 1, 0.3)
 
 		local ntitleLabel = create("TextLabel", {
 			Size = UDim2.new(1, -16, 0, 22),
 			Position = UDim2.new(0, 14, 0, 10),
 			BackgroundTransparency = 1,
 			Text = ntitle,
-			TextColor3 = Theme.Text,
+			TextColor3 = Color3.fromRGB(20, 20, 22),
 			Font = Enum.Font.GothamBold,
 			TextSize = 13,
 			TextXAlignment = Enum.TextXAlignment.Left,
+			ZIndex = 50,
 			Parent = notif,
 		})
 		local nmsg = create("TextLabel", {
@@ -644,17 +805,19 @@ function MacOSLib:CreateWindow(config)
 			Position = UDim2.new(0, 14, 0, 32),
 			BackgroundTransparency = 1,
 			Text = message,
-			TextColor3 = Theme.SubText,
+			TextColor3 = Color3.fromRGB(110, 110, 115),
 			Font = Enum.Font.Gotham,
 			TextSize = 11,
 			TextXAlignment = Enum.TextXAlignment.Left,
+			ZIndex = 50,
 			Parent = notif,
 		})
 		local bar = create("Frame", {
 			Size = UDim2.new(1, 0, 0, 3),
 			Position = UDim2.new(0, 0, 1, -3),
-			BackgroundColor3 = Theme.Accent,
+			BackgroundColor3 = T.Accent,
 			BorderSizePixel = 0,
+			ZIndex = 50,
 			Parent = notif,
 		})
 		corner(bar, 50)
@@ -669,12 +832,13 @@ function MacOSLib:CreateWindow(config)
 	end
 
 	-- ── CreateTab ──────────────────────────────────────────
-	-- "icon" agora é opcional e espera o NOME de um ícone vetorial
-	-- registrado em Icons (ex: "Home", "Gear", "Palette", "Sliders",
-	-- "Speaker", "Info", "Star", "Shield"). Se omitido ou inválido,
-	-- a tab simplesmente não mostra ícone.
+	-- "icon" é o NOME de um ícone Lucide-style registrado em
+	-- Icons (ex: "House", "Settings", "Palette", "Sliders",
+	-- "Volume", "Info", "Star", "Shield", "Monitor", "User",
+	-- "Bell"). Se omitido ou inválido, a tab não mostra ícone.
 	function Window:CreateTab(name, icon)
 		local tab = {}
+		tab._widgets = {} -- guarda widgets pra repaint de tema
 
 		local btn = create("TextButton", {
 			Name = name .. "_Tab",
@@ -733,18 +897,35 @@ function MacOSLib:CreateWindow(config)
 		tab._page = page
 		tab._label = label
 		tab._iconHolder = iconHolder
+		tab._iconName = icon
+
+		-- repinta a tab e todos os widgets dela quando o tema muda
+		function tab:_repaint(NewTheme)
+			local isActive = (Window._activeTab == tab)
+			btn.BackgroundColor3 = isActive and NewTheme.TabActive or NewTheme.TabInactive
+			label.TextColor3 = isActive and NewTheme.Text or NewTheme.SubText
+			page.ScrollBarImageColor3 = NewTheme.Accent
+			if iconHolder then
+				iconHolder:ClearAllChildren()
+				local targetColor = isActive and NewTheme.IconStrokeActive or NewTheme.IconStroke
+				drawIcon(iconHolder, tab._iconName, targetColor)
+			end
+			for _, w in ipairs(tab._widgets) do
+				w(NewTheme)
+			end
+		end
 
 		btn.MouseButton1Click:Connect(function()
 			Window:_setActive(tab)
 		end)
 		btn.MouseEnter:Connect(function()
 			if Window._activeTab ~= tab then
-				tween(btn, { BackgroundColor3 = Theme.ButtonHover }, 0.1)
+				tween(btn, { BackgroundColor3 = Window._theme.ButtonHover }, 0.1)
 			end
 		end)
 		btn.MouseLeave:Connect(function()
 			if Window._activeTab ~= tab then
-				tween(btn, { BackgroundColor3 = Theme.TabInactive }, 0.1)
+				tween(btn, { BackgroundColor3 = Window._theme.TabInactive }, 0.1)
 			end
 		end)
 
@@ -765,13 +946,16 @@ function MacOSLib:CreateWindow(config)
 				LayoutOrder = #page:GetChildren(),
 				Parent = page,
 			})
+			table.insert(tab._widgets, function(T)
+				s.TextColor3 = T.SubText
+			end)
 		end
 
 		function tab:AddButton(text, callback)
 			local row = create("TextButton", {
 				Size = UDim2.new(1, 0, 0, 36),
 				BackgroundColor3 = Theme.ButtonBG,
-				BackgroundTransparency = Glass.CardAlpha,
+				BackgroundTransparency = Theme.Glass.Card,
 				BorderSizePixel = 0,
 				Text = "",
 				AutoButtonColor = false,
@@ -779,7 +963,7 @@ function MacOSLib:CreateWindow(config)
 				Parent = page,
 			})
 			corner(row, 8)
-			stroke(row, Theme.Divider, 1, 0.5)
+			local rowStroke = stroke(row, Theme.Divider, 1, 0.5)
 
 			local rowLabel = create("TextLabel", {
 				Size = UDim2.new(1, -16, 1, 0),
@@ -792,28 +976,39 @@ function MacOSLib:CreateWindow(config)
 				TextXAlignment = Enum.TextXAlignment.Left,
 				Parent = row,
 			})
-			local chevron = create("TextLabel", {
-				Size = UDim2.new(0, 20, 1, 0),
-				Position = UDim2.new(1, -26, 0, 0),
+
+			-- chevron vetorial (estilo Lucide chevron-right) em vez de ">"
+			local chevHolder = create("Frame", {
+				Size = UDim2.new(0, 14, 0, 14),
+				Position = UDim2.new(1, -24, 0.5, -7),
 				BackgroundTransparency = 1,
-				Text = ">",
-				TextColor3 = Theme.SubText,
-				Font = Enum.Font.GothamBold,
-				TextSize = 14,
 				Parent = row,
 			})
+			line(chevHolder, 0.3, 0.15, 0.7, 0.5, Theme.SubText, 0.12)
+			line(chevHolder, 0.7, 0.5, 0.3, 0.85, Theme.SubText, 0.12)
+
 			row.MouseEnter:Connect(function()
-				tween(row, { BackgroundColor3 = Theme.ButtonHover }, 0.1)
+				tween(row, { BackgroundColor3 = Window._theme.ButtonHover }, 0.1)
 			end)
 			row.MouseLeave:Connect(function()
-				tween(row, { BackgroundColor3 = Theme.ButtonBG }, 0.1)
+				tween(row, { BackgroundColor3 = Window._theme.ButtonBG }, 0.1)
 			end)
 			row.MouseButton1Click:Connect(function()
-				tween(row, { BackgroundColor3 = Theme.Divider }, 0.08)
+				tween(row, { BackgroundColor3 = Window._theme.Divider }, 0.08)
 				task.delay(0.1, function()
-					tween(row, { BackgroundColor3 = Theme.ButtonBG }, 0.1)
+					tween(row, { BackgroundColor3 = Window._theme.ButtonBG }, 0.1)
 				end)
 				if callback then callback() end
+			end)
+
+			table.insert(tab._widgets, function(T)
+				row.BackgroundColor3 = T.ButtonBG
+				row.BackgroundTransparency = T.Glass.Card
+				rowStroke.Color = T.Divider
+				rowLabel.TextColor3 = T.Text
+				for _, c in ipairs(chevHolder:GetChildren()) do
+					c.BackgroundColor3 = T.SubText
+				end
 			end)
 			return row
 		end
@@ -823,13 +1018,13 @@ function MacOSLib:CreateWindow(config)
 			local row = create("Frame", {
 				Size = UDim2.new(1, 0, 0, 36),
 				BackgroundColor3 = Theme.ButtonBG,
-				BackgroundTransparency = Glass.CardAlpha,
+				BackgroundTransparency = Theme.Glass.Card,
 				BorderSizePixel = 0,
 				LayoutOrder = #page:GetChildren(),
 				Parent = page,
 			})
 			corner(row, 8)
-			stroke(row, Theme.Divider, 1, 0.5)
+			local rowStroke = stroke(row, Theme.Divider, 1, 0.5)
 
 			local rowLabel = create("TextLabel", {
 				Size = UDim2.new(1, -60, 1, 0),
@@ -869,15 +1064,24 @@ function MacOSLib:CreateWindow(config)
 			})
 			clickArea.MouseButton1Click:Connect(function()
 				value = not value
-				tween(track, { BackgroundColor3 = value and Theme.ToggleOn or Theme.ToggleOff }, 0.2)
+				tween(track, { BackgroundColor3 = value and Window._theme.ToggleOn or Window._theme.ToggleOff }, 0.2)
 				tween(thumb, { Position = UDim2.new(0, value and 20 or 2, 0.5, -11) }, 0.2)
 				if callback then callback(value) end
+			end)
+
+			table.insert(tab._widgets, function(T)
+				row.BackgroundColor3 = T.ButtonBG
+				row.BackgroundTransparency = T.Glass.Card
+				rowStroke.Color = T.Divider
+				rowLabel.TextColor3 = T.Text
+				thumb.BackgroundColor3 = T.White
+				track.BackgroundColor3 = value and T.ToggleOn or T.ToggleOff
 			end)
 
 			local toggle = {}
 			function toggle:Set(v)
 				value = v
-				tween(track, { BackgroundColor3 = value and Theme.ToggleOn or Theme.ToggleOff }, 0.2)
+				tween(track, { BackgroundColor3 = value and Window._theme.ToggleOn or Window._theme.ToggleOff }, 0.2)
 				tween(thumb, { Position = UDim2.new(0, value and 20 or 2, 0.5, -11) }, 0.2)
 			end
 			function toggle:Get() return value end
@@ -892,13 +1096,13 @@ function MacOSLib:CreateWindow(config)
 			local container = create("Frame", {
 				Size = UDim2.new(1, 0, 0, 58),
 				BackgroundColor3 = Theme.ButtonBG,
-				BackgroundTransparency = Glass.CardAlpha,
+				BackgroundTransparency = Theme.Glass.Card,
 				BorderSizePixel = 0,
 				LayoutOrder = #page:GetChildren(),
 				Parent = page,
 			})
 			corner(container, 8)
-			stroke(container, Theme.Divider, 1, 0.5)
+			local containerStroke = stroke(container, Theme.Divider, 1, 0.5)
 
 			local sliderLabel = create("TextLabel", {
 				Size = UDim2.new(1, -16, 0, 28),
@@ -948,7 +1152,7 @@ function MacOSLib:CreateWindow(config)
 				Parent = track,
 			})
 			corner(knob, 50)
-			stroke(knob, Theme.SliderFill, 2, 0)
+			local knobStroke = stroke(knob, Theme.SliderFill, 2, 0)
 
 			local dragging = false
 			local function updateSlider(input)
@@ -979,6 +1183,18 @@ function MacOSLib:CreateWindow(config)
 				end
 			end)
 
+			table.insert(tab._widgets, function(T)
+				container.BackgroundColor3 = T.ButtonBG
+				container.BackgroundTransparency = T.Glass.Card
+				containerStroke.Color = T.Divider
+				sliderLabel.TextColor3 = T.Text
+				valLabel.TextColor3 = T.SubText
+				track.BackgroundColor3 = T.SliderBG
+				fill.BackgroundColor3 = T.SliderFill
+				knob.BackgroundColor3 = T.White
+				knobStroke.Color = T.SliderFill
+			end)
+
 			local slider = {}
 			function slider:Set(v)
 				value = math.clamp(v, min, max)
@@ -995,13 +1211,13 @@ function MacOSLib:CreateWindow(config)
 			local row = create("Frame", {
 				Size = UDim2.new(1, 0, 0, 36),
 				BackgroundColor3 = Theme.ButtonBG,
-				BackgroundTransparency = Glass.CardAlpha,
+				BackgroundTransparency = Theme.Glass.Card,
 				BorderSizePixel = 0,
 				LayoutOrder = #page:GetChildren(),
 				Parent = page,
 			})
 			corner(row, 8)
-			stroke(row, Theme.Divider, 1, 0.5)
+			local rowStroke = stroke(row, Theme.Divider, 1, 0.5)
 
 			local inputLabel = create("TextLabel", {
 				Size = UDim2.new(0.42, 0, 1, 0),
@@ -1029,13 +1245,24 @@ function MacOSLib:CreateWindow(config)
 				Parent = row,
 			})
 			corner(inputBox, 6)
-			stroke(inputBox, Theme.Accent, 1, 0.6)
+			local inputStroke = stroke(inputBox, Theme.Accent, 1, 0.6)
 			padding(inputBox, 0, 8, 8, 0)
 
 			inputBox.FocusLost:Connect(function(enter)
 				if enter and callback then
 					callback(inputBox.Text)
 				end
+			end)
+
+			table.insert(tab._widgets, function(T)
+				row.BackgroundColor3 = T.ButtonBG
+				row.BackgroundTransparency = T.Glass.Card
+				rowStroke.Color = T.Divider
+				inputLabel.TextColor3 = T.Text
+				inputBox.BackgroundColor3 = T.InputBG
+				inputBox.TextColor3 = T.Text
+				inputBox.PlaceholderColor3 = T.SubText
+				inputStroke.Color = T.Accent
 			end)
 			return inputBox
 		end
@@ -1047,7 +1274,7 @@ function MacOSLib:CreateWindow(config)
 			local container = create("Frame", {
 				Size = UDim2.new(1, 0, 0, 36),
 				BackgroundColor3 = Theme.ButtonBG,
-				BackgroundTransparency = Glass.CardAlpha,
+				BackgroundTransparency = Theme.Glass.Card,
 				BorderSizePixel = 0,
 				ClipsDescendants = false,
 				LayoutOrder = #page:GetChildren(),
@@ -1055,7 +1282,7 @@ function MacOSLib:CreateWindow(config)
 				Parent = page,
 			})
 			corner(container, 8)
-			stroke(container, Theme.Divider, 1, 0.5)
+			local containerStroke = stroke(container, Theme.Divider, 1, 0.5)
 
 			local ddLabel = create("TextLabel", {
 				Size = UDim2.new(0.48, 0, 1, 0),
@@ -1081,7 +1308,7 @@ function MacOSLib:CreateWindow(config)
 				Parent = container,
 			})
 			corner(selectedLabel, 6)
-			stroke(selectedLabel, Theme.Divider, 1, 0.5)
+			local selectedStroke = stroke(selectedLabel, Theme.Divider, 1, 0.5)
 
 			local selectedText = create("TextLabel", {
 				Size = UDim2.new(1, -24, 1, 0),
@@ -1096,7 +1323,7 @@ function MacOSLib:CreateWindow(config)
 				Parent = selectedLabel,
 			})
 
-			-- seta (chevron) vetorial em vez de "v" como texto
+			-- chevron-down vetorial (estilo Lucide)
 			local chevronHolder = create("Frame", {
 				Size = UDim2.new(0, 10, 0, 10),
 				Position = UDim2.new(1, -16, 0.5, -5),
@@ -1104,28 +1331,8 @@ function MacOSLib:CreateWindow(config)
 				ZIndex = 5,
 				Parent = selectedLabel,
 			})
-			local chevA = create("Frame", {
-				BackgroundColor3 = Theme.SubText,
-				BorderSizePixel = 0,
-				AnchorPoint = Vector2.new(0.5, 0.5),
-				Position = UDim2.new(0.28, 0, 0.5, 0),
-				Size = UDim2.new(0.55, 0, 0.16, 0),
-				Rotation = 45,
-				ZIndex = 5,
-				Parent = chevronHolder,
-			})
-			corner(chevA, 100)
-			local chevB = create("Frame", {
-				BackgroundColor3 = Theme.SubText,
-				BorderSizePixel = 0,
-				AnchorPoint = Vector2.new(0.5, 0.5),
-				Position = UDim2.new(0.72, 0, 0.5, 0),
-				Size = UDim2.new(0.55, 0, 0.16, 0),
-				Rotation = -45,
-				ZIndex = 5,
-				Parent = chevronHolder,
-			})
-			corner(chevB, 100)
+			line(chevronHolder, 0.12, 0.32, 0.5, 0.7, Theme.SubText, 0.16)
+			line(chevronHolder, 0.5, 0.7, 0.88, 0.32, Theme.SubText, 0.16)
 
 			local dropList = create("Frame", {
 				Size = UDim2.new(0.46, 0, 0, #options * 30 + 8),
@@ -1137,10 +1344,11 @@ function MacOSLib:CreateWindow(config)
 				Parent = container,
 			})
 			corner(dropList, 8)
-			stroke(dropList, Theme.Divider, 1, 0.3)
+			local dropStroke = stroke(dropList, Theme.Divider, 1, 0.3)
 			listlayout(dropList, 0)
 			padding(dropList, 4, 0, 0, 4)
 
+			local optionButtons = {}
 			for _, opt in ipairs(options) do
 				local optBtn = create("TextButton", {
 					Size = UDim2.new(1, 0, 0, 30),
@@ -1152,8 +1360,9 @@ function MacOSLib:CreateWindow(config)
 					ZIndex = 10,
 					Parent = dropList,
 				})
+				table.insert(optionButtons, optBtn)
 				optBtn.MouseEnter:Connect(function()
-					tween(optBtn, { BackgroundTransparency = 0, BackgroundColor3 = Theme.ButtonHover }, 0.08)
+					tween(optBtn, { BackgroundTransparency = 0, BackgroundColor3 = Window._theme.ButtonHover }, 0.08)
 				end)
 				optBtn.MouseLeave:Connect(function()
 					tween(optBtn, { BackgroundTransparency = 1 }, 0.08)
@@ -1171,6 +1380,24 @@ function MacOSLib:CreateWindow(config)
 				open = not open
 				dropList.Visible = open
 				tween(chevronHolder, { Rotation = open and 180 or 0 }, 0.15)
+			end)
+
+			table.insert(tab._widgets, function(T)
+				container.BackgroundColor3 = T.ButtonBG
+				container.BackgroundTransparency = T.Glass.Card
+				containerStroke.Color = T.Divider
+				ddLabel.TextColor3 = T.Text
+				selectedLabel.BackgroundColor3 = T.InputBG
+				selectedStroke.Color = T.Divider
+				selectedText.TextColor3 = T.Text
+				dropList.BackgroundColor3 = T.White
+				dropStroke.Color = T.Divider
+				for _, c in ipairs(chevronHolder:GetChildren()) do
+					c.BackgroundColor3 = T.SubText
+				end
+				for _, optBtn in ipairs(optionButtons) do
+					optBtn.TextColor3 = T.Text
+				end
 			end)
 
 			local dd = {}
@@ -1191,6 +1418,9 @@ function MacOSLib:CreateWindow(config)
 				LayoutOrder = #page:GetChildren(),
 				Parent = page,
 			})
+			table.insert(tab._widgets, function(T)
+				lbl.TextColor3 = T.SubText
+			end)
 		end
 
 		return tab
